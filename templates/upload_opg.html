@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Upload OPG - Dental Age Estimation System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Upload OPG for Patient {{ patient.patient_id }}</h2>
+    
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="opg_file">Select OPG Image:</label>
+            <input type="file" id="opg_file" name="opg_file" accept="image/*" required>
+        </div>
+        
+        <button type="submit">Upload OPG</button>
+    </form>
+    
+    <div style="margin-top: 2rem;">
+        <a href="/patients" class="btn btn-secondary">Back to Patients</a>
+    </div>
+</div>
+{% endblock %}

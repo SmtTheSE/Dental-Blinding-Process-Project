@@ -9,6 +9,8 @@ class User(db.Model):
     password = db.Column(db.String(255), nullable=False)  # Increased length to accommodate longer hashes
     role = db.Column(db.String(20), nullable=False)  # 'supervisor' or 'pi'
     locked_until = db.Column(db.DateTime, nullable=True)  # For account lockout functionality
+    failed_attempts = db.Column(db.Integer, default=0)  # Track failed login attempts
+    last_login = db.Column(db.DateTime, nullable=True)  # Track last successful login
     
     def __repr__(self):
         return f'<User {self.username}>'

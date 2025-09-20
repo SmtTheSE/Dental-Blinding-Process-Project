@@ -1,6 +1,8 @@
 from flask import Blueprint, request, render_template, redirect, url_for, flash, session, Response, current_app, send_from_directory
 from models import db, Patient, EstimationEntry
 from dental_methods import calculate_demirjian_score, calculate_alqahtani_age, get_alqahtani_teeth, get_demirjian_teeth
+from functools import wraps
+from sqlalchemy import cast
 import random
 import string
 import csv
@@ -31,15 +33,16 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def login_required(func):
+    @wraps(func)
     def wrapper(*args, **kwargs):
         if 'user_id' not in session:
             return redirect(url_for('auth.login'))
         return func(*args, **kwargs)
-    wrapper.__name__ = func.__name__
     return wrapper
 
 def role_required(role):
     def decorator(func):
+        @wraps(func)
         def wrapper(*args, **kwargs):
             if 'user_id' not in session:
                 return redirect(url_for('auth.login'))
@@ -47,9 +50,38 @@ def role_required(role):
                 flash('Access denied')
                 return redirect(url_for('main.dashboard'))
             return func(*args, **kwargs)
-        wrapper.__name__ = func.__name__
         return wrapper
     return decorator
+
+def generate_csrf_token():
+    """Generate and store CSRF token in session"""
+    if 'csrf_token' not in session:
+        session['csrf_token'] = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
+    return session['csrf_token']
+
+@main.context_processor
+def inject_csrf_token():
+    """Inject CSRF token into all templates"""
+    return dict(csrf_token=generate_csrf_token)
+
+def validate_csrf_token():
+    """Validate CSRF token for POST requests"""
+    token = session.get('csrf_token')
+    form_token = request.form.get('csrf_token') or request.headers.get('X-CSRF-Token')
+    
+    if not token or not form_token or token != form_token:
+        return False
+    return True
+
+@main.before_request
+def csrf_protect():
+    """CSRF protection for all POST requests"""
+    if request.method == "POST":
+        # Skip CSRF check for file uploads and API-like endpoints that might have their own protection
+        if request.endpoint not in ['main.upload_opg', 'main.get_estimation_form']:
+            if not validate_csrf_token():
+                flash('Security token validation failed. Please try again.')
+                return redirect(request.url)
 
 @main.route('/dashboard')
 @login_required
@@ -59,26 +91,44 @@ def dashboard():
     else:
         return render_template('pi_dashboard.html')
 
+def renumber_patient_ids():
+    """Renumber patient IDs sequentially starting from 1"""
+    patients = Patient.query.order_by(Patient.id).all()
+    for i, patient in enumerate(patients, 1):
+        # Check if patient_id is in format "T<number>" or just a number
+        if patient.patient_id.startswith('T'):
+            # Update T-prefixed IDs to be sequential
+            patient.patient_id = f"T{i}"
+        else:
+            # Update numeric IDs to be sequential
+            try:
+                # Try to convert to int to check if it's a pure number
+                int(patient.patient_id)
+                patient.patient_id = str(i)
+            except ValueError:
+                # If it's not a pure number, keep as is but log
+                pass
+    db.session.commit()
+
 @main.route('/patients', methods=['GET', 'POST'])
 @role_required('supervisor')
 def manage_patients():
     if request.method == 'POST':
-        # Check if it's a batch upload
-        if 'csv_file' in request.files:
+        # Handle file upload
+        if 'csv_file' in request.files and request.files['csv_file'].filename != '':
             file = request.files['csv_file']
-            if file and (file.filename.endswith('.csv') or file.filename.endswith('.xlsx') or file.filename.endswith('.xls')):
-                added_count = 0
-                skipped_count = 0
-                image_count = 0
-                
-                # Process CSV or Excel upload
-                if file.filename.endswith('.csv'):
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                if filename.endswith('.csv'):
                     # Process CSV upload
                     stream = StringIO(file.stream.read().decode("UTF8"), newline=None)
                     csv_input = csv.reader(stream)
                     
                     # Skip header row
                     next(csv_input, None)
+                    
+                    added_count = 0
+                    skipped_count = 0
                     
                     for row in csv_input:
                         # Handle different CSV formats:
@@ -126,6 +176,14 @@ def manage_patients():
                                     db.session.flush()
                             else:
                                 skipped_count += 1
+                    
+                    try:
+                        db.session.commit()
+                        flash(f'CSV import successful! Added: {added_count}, Skipped (already exist): {skipped_count}')
+                    except Exception as e:
+                        db.session.rollback()
+                        flash(f'Error importing CSV: {str(e)}')
+                        
                 else:  # Excel file
                     # Process Excel upload
                     try:
@@ -141,6 +199,9 @@ def manage_patients():
                         # Skip header row
                         first_row = True
                         row_count = 0
+                        added_count = 0
+                        skipped_count = 0
+                        
                         for row in worksheet.iter_rows(values_only=True):
                             if first_row:
                                 first_row = False
@@ -198,59 +259,75 @@ def manage_patients():
                         workbook.close()
                         # Clean up temp file
                         os.remove(temp_file_path)
+                        
+                        try:
+                            db.session.commit()
+                            flash(f'Excel import successful! Added: {added_count}, Skipped (already exist): {skipped_count}')
+                        except Exception as e:
+                            db.session.rollback()
+                            flash(f'Error importing Excel: {str(e)}')
                     except Exception as e:
                         # Clean up temp file on error
                         if 'temp_file_path' in locals() and os.path.exists(temp_file_path):
                             os.remove(temp_file_path)
                         flash(f'Error processing Excel file: {str(e)}')
-                        return redirect(url_for('main.manage_patients'))
-                
-                db.session.commit()
-                flash(f'Patients import completed. Added: {added_count}, Skipped (already exist): {skipped_count}. Note: Images must be uploaded separately.')
-                return redirect(url_for('main.manage_patients'))
+                        
+        else:
+            # Handle manual patient creation
+            patient_id = request.form['patient_id']
+            name = request.form.get('name', '')
+            actual_age = float(request.form['actual_age'])
+            sex = request.form['sex']
+            
+            # Check if patient already exists
+            patient = Patient.query.filter_by(patient_id=patient_id).first()
+            if not patient:
+                patient = Patient(
+                    patient_id=patient_id,
+                    name=name,
+                    actual_age=actual_age,
+                    sex=sex
+                )
+                db.session.add(patient)
+                try:
+                    db.session.commit()
+                    flash('Patient added successfully!')
+                except Exception as e:
+                    db.session.rollback()
+                    flash(f'Error adding patient: {str(e)}')
+            else:
+                flash('Patient with this ID already exists!')
         
-        # Regular patient creation
-        patient_id = request.form['patient_id']
-        name = request.form.get('name', '')
-        actual_age = float(request.form['actual_age'])
-        sex = request.form['sex']
+        # Renumber patient IDs after any addition
+        renumber_patient_ids()
         
-        # Create new patient
-        patient = Patient(
-            patient_id=patient_id,
-            name=name,
-            actual_age=actual_age,
-            sex=sex
-        )
-        db.session.add(patient)
-        db.session.commit()
-        
-        flash('Patient added successfully')
         return redirect(url_for('main.manage_patients'))
     
     # Handle search functionality and pagination
     search_query = request.args.get('search', '').strip()
     page = request.args.get('page', 1, type=int)
-    per_page = 20  # Show 20 patients per page
+    per_page = 20  # Show 20 entries per page
+    
+    # Query patients with search and pagination
+    patients_query = Patient.query
     
     if search_query:
-        # Search in multiple fields: patient_id, name, code_a, code_b
-        patients_query = Patient.query.filter(
+        patients_query = patients_query.filter(
             db.or_(
                 Patient.patient_id.contains(search_query),
                 Patient.name.contains(search_query),
                 Patient.code_a.contains(search_query),
                 Patient.code_b.contains(search_query)
             )
-        ).order_by(Patient.id)
-    else:
-        # Get all patients ordered by ID
-        patients_query = Patient.query.order_by(Patient.id)
+        )
     
-    # Apply pagination
+    # Order patients by patient_id numerically
+    patients_query = patients_query.order_by(cast(Patient.patient_id, db.Integer))
+    
+    # Get patients with pagination
     patients = patients_query.paginate(
-        page=page, 
-        per_page=per_page, 
+        page=page,
+        per_page=per_page,
         error_out=False
     )
     
@@ -261,13 +338,15 @@ def manage_patients():
     
     return render_template('patients.html', patients=patients, search_query=search_query)
 
-@main.route('/patients/update/<int:patient_id>', methods=['GET', 'POST'])
+@main.route('/patients/update/<int:id>', methods=['GET', 'POST'])
 @role_required('supervisor')
-def update_patient(patient_id):
-    patient = Patient.query.get_or_404(patient_id)
+def update_patient(id):
+    patient = Patient.query.get_or_404(id)
     
     if request.method == 'POST':
-        # Update patient information
+        old_patient_id = patient.patient_id
+        
+        # Update patient details
         patient.patient_id = request.form['patient_id']
         patient.name = request.form.get('name', '')
         patient.actual_age = float(request.form['actual_age'])
@@ -275,14 +354,17 @@ def update_patient(patient_id):
         
         try:
             db.session.commit()
-            flash('Patient updated successfully')
+            flash('Patient updated successfully!')
+            
+            # If patient_id was changed, renumber all patient IDs
+            if old_patient_id != patient.patient_id:
+                renumber_patient_ids()
         except Exception as e:
             db.session.rollback()
-            flash('Error updating patient: ' + str(e))
+            flash(f'Error updating patient: {str(e)}')
         
         return redirect(url_for('main.manage_patients'))
     
-    # For GET requests, show the update form
     return render_template('update_patient.html', patient=patient)
 
 @main.route('/patients/delete/<int:patient_id>', methods=['POST'])
@@ -290,13 +372,25 @@ def update_patient(patient_id):
 def delete_patient(patient_id):
     patient = Patient.query.get_or_404(patient_id)
     
+    # Delete OPG image file if it exists
+    if patient.opg_link:
+        try:
+            os.remove(os.path.join(current_app.root_path, patient.opg_link))
+        except:
+            pass  # If file doesn't exist or can't be deleted, continue anyway
+    
+    # Delete the patient record
+    db.session.delete(patient)
+    
     try:
-        db.session.delete(patient)
         db.session.commit()
-        flash('Patient deleted successfully')
+        flash('Patient deleted successfully!')
+        
+        # Renumber patient IDs after deletion
+        renumber_patient_ids()
     except Exception as e:
         db.session.rollback()
-        flash('Error deleting patient: ' + str(e))
+        flash(f'Error deleting patient: {str(e)}')
     
     return redirect(url_for('main.manage_patients'))
 
@@ -421,6 +515,11 @@ def blinded_data():
 @role_required('pi')
 def estimate_age():
     if request.method == 'POST':
+        # Validate CSRF token
+        if not validate_csrf_token():
+            flash('Security token validation failed. Please try again.')
+            return redirect(url_for('main.estimate_age'))
+            
         code = request.form['code']
         estimated_age = float(request.form['estimated_age'])
         method = request.form['method']

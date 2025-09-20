@@ -690,6 +690,40 @@
         </div>
     </footer>
     
+    <!-- CSRF Token Script -->
+    <script>
+        // Add CSRF token to all forms
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-dismiss flash messages
+            const flashMessages = document.querySelectorAll('.flash-message');
+            flashMessages.forEach(function(message) {
+                setTimeout(function() {
+                    message.style.opacity = '0';
+                    setTimeout(function() {
+                        message.remove();
+                    }, 300);
+                }, 5000);
+            });
+            
+            // Add CSRF token to all forms
+            const forms = document.querySelectorAll('form');
+            forms.forEach(function(form) {
+                // Skip if CSRF token already exists
+                if (!form.querySelector('input[name="csrf_token"]')) {
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = 'csrf_token';
+                    csrfInput.value = '{{ csrf_token }}';
+                    form.appendChild(csrfInput);
+                }
+            });
+            
+            // Setup event listeners for existing AJAX search
+            setupLiveSearch();
+            setupDeleteConfirmation();
+        });
+    </script>
+    
     <!-- AJAX Search Script -->
     <script>
         // Global search handler

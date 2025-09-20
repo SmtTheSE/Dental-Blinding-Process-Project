@@ -80,8 +80,8 @@
                 </td>
                 <td>{{ result.code_a or 'Not assigned' }}</td>
                 <td>{{ result.code_b or 'Not assigned' }}</td>
-                <td>{{ result.alqahtani_estimated }}</td>
-                <td>{{ result.demirjian_estimated }}</td>
+                <td>{{ result.alqahtani_estimated_age or 'Not estimated' }}</td>
+                <td>{{ result.demirjian_estimated_age or 'Not estimated' }}</td>
             </tr>
             {% endfor %}
         </table>

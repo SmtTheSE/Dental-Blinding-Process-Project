@@ -3,7 +3,7 @@ class Config:
 import logging
 import re
 from datetime import datetime, timedelta
-from flask import Blueprint, request, render_template, redirect, url_for, flash, session
+from flask import Blueprint, request, render_template, redirect, url_for, flash, session, current_app
 from models import db, User
 from werkzeug.security import check_password_hash, generate_password_hash
 from config import Config
@@ -11,8 +11,13 @@ from config import Config
 auth = Blueprint('auth', __name__)
 
 # Configure logging
-logging.basicConfig(filename='auth.log', level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+# Use app logger if available, otherwise create a basic logger
+try:
+    from flask import current_app
+    logger = current_app.logger
+except:
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
 
 MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_TIME = 300  # 5 minutes in seconds
@@ -29,7 +34,7 @@ def validate_password(password):
     if not re.search(r"[a-z]", password):
         return False, "Password must contain at least one lowercase letter"
     
-    if not re.search(r"\d]", password):
+    if not re.search(r"\d", password):
         return False, "Password must contain at least one digit"
     
     return True, "Password is valid"
@@ -149,8 +154,8 @@ def change_password():
             flash('New password must be different from current password')
             return redirect(url_for('auth.change_password'))
             
-        # Update password
-        user.password = generate_password_hash(new_password)
+        # Update password with stronger hashing parameters
+        user.password = generate_password_hash(new_password, method='pbkdf2:sha256', salt_length=16)
         db.session.commit()
         
         flash('Password changed successfully')

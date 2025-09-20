@@ -96,19 +96,6 @@
             align-items: center;
             gap: 0.5rem;
         }
-```
-
-```html
-<<<<<<< SEARCH
-    <footer>
-        <p>&copy; 2025 University Of Dental Medicine, Mandalay. All rights reserved.</p>
-    </footer>
-    <footer>
-        <div class="footer-content">
-            <img src="{{ url_for('static', filename='img/UDMM.jpeg') }}" alt="UDMM Logo" class="footer-logo">
-            <p>&copy; 2025 University Of Dental Medicine, Mandalay. All rights reserved.</p>
-        </div>
-    </footer>
         
         .nav-links {
             display: flex;
@@ -705,8 +692,8 @@
                 }, 5000);
             });
             
-            // Add CSRF token to all forms
-            const forms = document.querySelectorAll('form');
+            // Add CSRF token to POST forms only
+            const forms = document.querySelectorAll('form[method="POST"]');
             forms.forEach(function(form) {
                 // Skip if CSRF token already exists
                 if (!form.querySelector('input[name="csrf_token"]')) {

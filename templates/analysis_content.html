@@ -19,24 +19,22 @@
     <p>Loading...</p>
 </div>
 
-{% if accuracy_chart or comparison_chart %}
+{% if accuracy_chart %}
 <div style="background: white; padding: 1.5rem; border-radius: var(--border-radius); box-shadow: var(--box-shadow); margin-bottom: 2rem;">
-    <h3>Visual Analysis</h3>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1rem;">
-        {% if accuracy_chart %}
-        <div>
-            <h4>Accuracy Comparison</h4>
-            <img src="data:image/png;base64,{{ accuracy_chart }}" alt="Accuracy Comparison Chart" style="max-width: 100%;">
-        </div>
-        {% endif %}
-        
-        {% if comparison_chart %}
-        <div>
-            <h4>Method Comparison</h4>
-            <img src="data:image/png;base64,{{ comparison_chart }}" alt="Method Comparison Chart" style="max-width: 100%;">
-        </div>
-        {% endif %}
-    </div>
+    <h3>Age Distribution</h3>
+    <img src="data:image/png;base64,{{ accuracy_chart }}" alt="Age Distribution Chart" style="max-width: 100%; height: auto;">
+</div>
+{% else %}
+<div style="background: white; padding: 2rem; text-align: center; border-radius: var(--border-radius); box-shadow: var(--box-shadow); margin-bottom: 2rem;">
+    <h3>No Data Available</h3>
+    <p>There is no estimation data available for analysis yet. Please ensure patients have been added and age estimations have been performed.</p>
+</div>
+{% endif %}
+
+{% if comparison_chart %}
+<div style="background: white; padding: 1.5rem; border-radius: var(--border-radius); box-shadow: var(--box-shadow); margin-bottom: 2rem;">
+    <h3>Method Comparison</h3>
+    <img src="data:image/png;base64,{{ comparison_chart }}" alt="Method Comparison Chart" style="max-width: 100%; height: auto;">
 </div>
 {% endif %}
 
@@ -75,8 +73,8 @@
             </td>
             <td>{{ result.code_a or 'Not assigned' }}</td>
             <td>{{ result.code_b or 'Not assigned' }}</td>
-            <td>{{ result.alqahtani_estimated }}</td>
-            <td>{{ result.demirjian_estimated }}</td>
+            <td>{{ result.alqahtani_estimated_age or 'Not estimated' }}</td>
+            <td>{{ result.demirjian_estimated_age or 'Not estimated' }}</td>
         </tr>
         {% endfor %}
     </table>

@@ -22,8 +22,27 @@ import matplotlib.pyplot as plt
 import base64
 from io import BytesIO
 import numpy as np
+import logging
+import datetime
 
 main = Blueprint('main', __name__)
+
+# Configure logging
+try:
+    logger = current_app.logger
+except:
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
+# Configure upload folder
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+# Simple in-memory cache for charts (in production, use Redis or similar)
+chart_cache = {}
+
+# Cache timeout in seconds (e.g., 1 hour)
+CHART_CACHE_TIMEOUT = 3600
 
 # Configure upload folder
 UPLOAD_FOLDER = 'uploads'
@@ -62,12 +81,19 @@ def generate_csrf_token():
 @main.context_processor
 def inject_csrf_token():
     """Inject CSRF token into all templates"""
-    return dict(csrf_token=generate_csrf_token)
+    return dict(csrf_token=generate_csrf_token())
 
 def validate_csrf_token():
     """Validate CSRF token for POST requests"""
     token = session.get('csrf_token')
-    form_token = request.form.get('csrf_token') or request.headers.get('X-CSRF-Token')
+    
+    # Handle different content types
+    if request.is_json:
+        # For JSON requests, get token from headers or JSON body
+        form_token = request.headers.get('X-CSRF-Token') or request.get_json(silent=True).get('csrf_token') if request.get_json(silent=True) else None
+    else:
+        # For form submissions, get token from form data or headers
+        form_token = request.form.get('csrf_token') or request.headers.get('X-CSRF-Token')
     
     if not token or not form_token or token != form_token:
         return False
@@ -77,9 +103,18 @@ def validate_csrf_token():
 def csrf_protect():
     """CSRF protection for all POST requests"""
     if request.method == "POST":
-        # Skip CSRF check for file uploads and API-like endpoints that might have their own protection
+        # Skip CSRF check for specific endpoints
         if request.endpoint not in ['main.upload_opg', 'main.get_estimation_form']:
             if not validate_csrf_token():
+                # Determine response format based on request type
+                if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    # Return JSON error for AJAX or JSON requests
+                    return Response(
+                        '{"error": "Security token validation failed. Please refresh the page and try again."}', 
+                        status=400, 
+                        mimetype='application/json'
+                    )
+                # For regular form submissions, use flash and redirect
                 flash('Security token validation failed. Please try again.')
                 return redirect(request.url)
 
@@ -94,13 +129,25 @@ def dashboard():
 def renumber_patient_ids():
     """Renumber patient IDs sequentially starting from 1"""
     patients = Patient.query.order_by(Patient.id).all()
+    
+    # First, assign temporary IDs to avoid unique constraint violations
+    for i, patient in enumerate(patients, 1):
+        # Assign a temporary ID that won't conflict
+        patient.patient_id = f"TEMP_{patient.id}"
+    db.session.flush()  # Flush to database but don't commit yet
+    
+    # Then assign the final sequential IDs
     for i, patient in enumerate(patients, 1):
         # Check if patient_id is in format "T<number>" or just a number
-        if patient.patient_id.startswith('T'):
+        if patient.patient_id.startswith('T') and not patient.patient_id.startswith('TEMP_'):
             # Update T-prefixed IDs to be sequential
             patient.patient_id = f"T{i}"
-        else:
+        elif patient.patient_id.startswith('TEMP_'):
+            # This is a patient that had a numeric ID before
             # Update numeric IDs to be sequential
+            patient.patient_id = str(i)
+        else:
+            # Check if it's a pure number
             try:
                 # Try to convert to int to check if it's a pure number
                 int(patient.patient_id)
@@ -108,6 +155,7 @@ def renumber_patient_ids():
             except ValueError:
                 # If it's not a pure number, keep as is but log
                 pass
+    
     db.session.commit()
 
 @main.route('/patients', methods=['GET', 'POST'])
@@ -274,6 +322,7 @@ def manage_patients():
                         
         else:
             # Handle manual patient creation
+                
             patient_id = request.form['patient_id']
             name = request.form.get('name', '')
             actual_age = float(request.form['actual_age'])
@@ -641,17 +690,172 @@ def get_estimation_form():
                           sex=sex, 
                           teeth=teeth)
 
+def generate_chart_data():
+    """Generate chart data with caching"""
+    cache_key = "analysis_charts"
+    
+    # Check if we have cached data
+    if cache_key in chart_cache:
+        cached_data, timestamp = chart_cache[cache_key]
+        # Cache for 5 minutes
+        if (datetime.datetime.utcnow() - timestamp).total_seconds() < 300:
+            logger.info("Returning cached chart data")
+            return cached_data
+    
+    # Generate new chart data
+    logger.info("Generating new chart data")
+    
+    # Get all estimation entries
+    entries = EstimationEntry.query.all()
+    
+    if not entries:
+        return None, None, None, None
+    
+    # Prepare data for charts
+    alq_ages = [e.estimated_age for e in entries if e.method_used.lower() == 'alqahtani']
+    dem_ages = [e.estimated_age for e in entries if e.method_used.lower() == 'demirjian']
+    
+    # Actual ages from patients
+    actual_ages = []
+    for e in entries:
+        patient = Patient.query.filter(
+            (Patient.code_a == e.code) | (Patient.code_b == e.code)
+        ).first()
+        if patient:
+            actual_ages.append(patient.actual_age)
+    
+    # Generate charts
+    # 1. Age Distribution Chart
+    plt.clf()
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    if alq_ages or dem_ages:
+        if alq_ages:
+            ax.hist(alq_ages, bins=20, alpha=0.7, label='AlQahtani', color='#2563eb')
+        if dem_ages:
+            ax.hist(dem_ages, bins=20, alpha=0.7, label='Demirjian', color='#818cf8')
+        ax.set_xlabel('Estimated Age (years)')
+        ax.set_ylabel('Frequency')
+        ax.set_title('Distribution of Estimated Ages')
+        ax.legend()
+    
+    buf = BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight')
+    buf.seek(0)
+    age_dist_chart = base64.b64encode(buf.getvalue()).decode('utf-8')
+    buf.close()
+    
+    # 2. Actual vs Estimated Chart
+    plt.clf()
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    if actual_ages and (alq_ages or dem_ages):
+        if alq_ages and len(actual_ages) == len(alq_ages):
+            ax.scatter(actual_ages[:len(alq_ages)], alq_ages, alpha=0.7, label='AlQahtani', color='#2563eb')
+        if dem_ages and len(actual_ages) == len(dem_ages):
+            ax.scatter(actual_ages[:len(dem_ages)], dem_ages, alpha=0.7, label='Demirjian', color='#818cf8')
+        
+        # Perfect prediction line
+        if actual_ages:
+            min_age = min(actual_ages)
+            max_age = max(actual_ages)
+            ax.plot([min_age, max_age], [min_age, max_age], 'r--', label='Perfect Prediction')
+        
+        ax.set_xlabel('Actual Age (years)')
+        ax.set_ylabel('Estimated Age (years)')
+        ax.set_title('Actual vs Estimated Ages')
+        ax.legend()
+    
+    buf = BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight')
+    buf.seek(0)
+    actual_vs_estimated_chart = base64.b64encode(buf.getvalue()).decode('utf-8')
+    buf.close()
+    
+    # 3. Error Distribution Chart
+    plt.clf()
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    alq_errors = []
+    dem_errors = []
+    
+    for i, e in enumerate(entries):
+        patient = Patient.query.filter(
+            (Patient.code_a == e.code) | (Patient.code_b == e.code)
+        ).first()
+        if patient:
+            error = abs(e.estimated_age - patient.actual_age)
+            if e.method_used.lower() == 'alqahtani':
+                alq_errors.append(error)
+            elif e.method_used.lower() == 'demirjian':
+                dem_errors.append(error)
+    
+    if alq_errors or dem_errors:
+        if alq_errors:
+            ax.hist(alq_errors, bins=20, alpha=0.7, label='AlQahtani', color='#2563eb')
+        if dem_errors:
+            ax.hist(dem_errors, bins=20, alpha=0.7, label='Demirjian', color='#818cf8')
+        ax.set_xlabel('Absolute Error (years)')
+        ax.set_ylabel('Frequency')
+        ax.set_title('Distribution of Estimation Errors')
+        ax.legend()
+    
+    buf = BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight')
+    buf.seek(0)
+    error_dist_chart = base64.b64encode(buf.getvalue()).decode('utf-8')
+    buf.close()
+    
+    # 4. Method Comparison Chart
+    plt.clf()
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    alq_mean_error = np.mean(alq_errors) if alq_errors else 0
+    dem_mean_error = np.mean(dem_errors) if dem_errors else 0
+    
+    methods = ['AlQahtani', 'Demirjian']
+    mean_errors = [alq_mean_error, dem_mean_error]
+    colors = ['#2563eb', '#818cf8']
+    
+    bars = ax.bar(methods, mean_errors, color=colors)
+    ax.set_ylabel('Mean Absolute Error (years)')
+    ax.set_title('Comparison of Methods')
+    
+    # Add value labels on bars
+    for bar, error in zip(bars, mean_errors):
+        height = bar.get_height()
+        ax.annotate(f'{error:.2f}',
+                    xy=(bar.get_x() + bar.get_width() / 2, height),
+                    xytext=(0, 3),
+                    textcoords="offset points",
+                    ha='center', va='bottom')
+    
+    buf = BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight')
+    buf.seek(0)
+    method_comparison_chart = base64.b64encode(buf.getvalue()).decode('utf-8')
+    buf.close()
+    
+    chart_data = (age_dist_chart, actual_vs_estimated_chart, error_dist_chart, method_comparison_chart)
+    
+    # Cache the data
+    chart_cache[cache_key] = (chart_data, datetime.datetime.utcnow())
+    
+    return chart_data
+
 @main.route('/analysis')
 @role_required('supervisor')
 def analysis():
     # Handle search functionality and pagination
     search_query = request.args.get('search', '').strip()
     page = request.args.get('page', 1, type=int)
-    per_page = 20  # Show 20 patients per page
+    per_page = 20  # Show 20 entries per page
     
-    # Get all patients and their estimations
+    # Query patients with search and pagination
+    patients_query = Patient.query
+    
     if search_query:
-        patients_query = Patient.query.filter(
+        patients_query = patients_query.filter(
             db.or_(
                 Patient.patient_id.contains(search_query),
                 Patient.name.contains(search_query),
@@ -659,144 +863,73 @@ def analysis():
                 Patient.code_b.contains(search_query)
             )
         )
-    else:
-        patients_query = Patient.query
     
-    # Apply pagination
+    # Order patients by patient_id numerically
+    patients_query = patients_query.order_by(cast(Patient.patient_id, db.Integer))
+    
+    # Get patients with pagination
     patients = patients_query.paginate(
         page=page,
         per_page=per_page,
         error_out=False
     )
     
-    results = []
-    alqahtani_data = []
-    demirjian_data = []
+    # Prepare results for the template
+    results = patients.items
     
-    for patient in patients.items:
-        result = {
-            'patient_id': patient.patient_id,
-            'name': patient.name,
-            'actual_age': patient.actual_age,
-            'sex': patient.sex,
-            'opg_link': patient.opg_link,
-            'code_a': patient.code_a,
-            'code_b': patient.code_b,
-            'alqahtani_estimated': patient.alqahtani_estimated_age or 'Not estimated',
-            'demirjian_estimated': patient.demirjian_estimated_age or 'Not estimated'
-        }
-        
-        results.append(result)
-        
-        # Collect data for visualization
-        if patient.alqahtani_estimated_age:
-            alqahtani_data.append((patient.actual_age, patient.alqahtani_estimated_age))
-        
-        if patient.demirjian_estimated_age:
-            demirjian_data.append((patient.actual_age, patient.demirjian_estimated_age))
+    # Generate or retrieve cached chart data
+    chart_data = generate_chart_data()
     
-    # Generate accuracy comparison chart
-    accuracy_chart = None
-    if alqahtani_data or demirjian_data:
-        accuracy_chart = generate_accuracy_chart(alqahtani_data, demirjian_data)
+    if chart_data[0] is None:
+        flash('No data available for analysis yet.')
+        # Check if it's an AJAX request
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            # Return only the content part for AJAX requests
+            return render_template('analysis_content.html',
+                                 accuracy_chart=None,
+                                 comparison_chart=None,
+                                 patients=patients,
+                                 results=results,
+                                 search_query=search_query)
+        
+        return render_template('analysis.html', 
+                             accuracy_chart=None,
+                             comparison_chart=None,
+                             patients=patients,
+                             results=results,
+                             search_query=search_query)
     
-    # Generate method comparison chart
-    comparison_chart = None
-    if alqahtani_data or demirjian_data:
-        comparison_chart = generate_method_comparison_chart(alqahtani_data, demirjian_data)
+    age_dist_chart, actual_vs_estimated_chart, error_dist_chart, method_comparison_chart = chart_data
+    
+    # Map the generated charts to the expected template variables
+    accuracy_chart = age_dist_chart  # Using age distribution as the accuracy chart
+    comparison_chart = method_comparison_chart  # Using method comparison as the comparison chart
     
     # Check if it's an AJAX request
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         # Return only the content part for AJAX requests
-        return render_template('analysis_content.html', 
-                              results=results,
-                              accuracy_chart=accuracy_chart,
-                              comparison_chart=comparison_chart,
-                              search_query=search_query,
-                              patients=patients)
+        return render_template('analysis_content.html',
+                             accuracy_chart=accuracy_chart,
+                             comparison_chart=comparison_chart,
+                             patients=patients,
+                             results=results,
+                             search_query=search_query)
     
-    return render_template('analysis.html', 
-                          results=results,
-                          accuracy_chart=accuracy_chart,
-                          comparison_chart=comparison_chart,
-                          search_query=search_query,
-                          patients=patients)
+    return render_template('analysis.html',
+                         accuracy_chart=accuracy_chart,
+                         comparison_chart=comparison_chart,
+                         patients=patients,
+                         results=results,
+                         search_query=search_query)
 
-def generate_accuracy_chart(alqahtani_data, demirjian_data):
-    """Generate a scatter plot comparing estimated vs actual ages"""
-    # Create a new figure and axis
-    fig, ax = plt.subplots(figsize=(10, 8))
-    
-    # Plot AlQahtani data
-    if alqahtani_data:
-        alq_actual, alq_estimated = zip(*alqahtani_data)
-        ax.scatter(alq_actual, alq_estimated, label='AlQahtani Method', alpha=0.7, s=60)
-    
-    # Plot Demirjian data
-    if demirjian_data:
-        dem_actual, dem_estimated = zip(*demirjian_data)
-        ax.scatter(dem_actual, dem_estimated, label='Demirjian Method', alpha=0.7, s=60)
-    
-    # Plot ideal line (where estimated = actual)
-    all_actual = [age for age, _ in alqahtani_data] + [age for age, _ in demirjian_data]
-    if all_actual:
-        min_age, max_age = min(all_actual), max(all_actual)
-        ax.plot([min_age, max_age], [min_age, max_age], 'r--', label='Perfect Estimation', linewidth=2)
-    
-    ax.set_xlabel('Actual Age (years)')
-    ax.set_ylabel('Estimated Age (years)')
-    ax.set_title('Estimated vs Actual Age Comparison')
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-    
-    # Save plot to base64 string
-    img = BytesIO()
-    fig.savefig(img, format='png', bbox_inches='tight')
-    img.seek(0)
-    plot_url = base64.b64encode(img.getvalue()).decode()
-    plt.close(fig)
-    
-    return plot_url
-
-def generate_method_comparison_chart(alqahtani_data, demirjian_data):
-    """Generate a bar chart comparing the accuracy of both methods"""
-    # Create a new figure and axis
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    # Calculate mean absolute errors
-    alq_mae = 0
-    dem_mae = 0
-    
-    if alqahtani_data:
-        alq_mae = np.mean([abs(actual - estimated) for actual, estimated in alqahtani_data])
-    
-    if demirjian_data:
-        dem_mae = np.mean([abs(actual - estimated) for actual, estimated in demirjian_data])
-    
-    # Create bar chart
-    methods = ['AlQahtani', 'Demirjian']
-    maes = [alq_mae, dem_mae]
-    
-    bars = ax.bar(methods, maes, color=['#1f77b4', '#ff7f0e'], alpha=0.7, edgecolor='black')
-    
-    # Add value labels on bars
-    for bar, mae in zip(bars, maes):
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height,
-                f'{mae:.2f}', ha='center', va='bottom', fontweight='bold')
-    
-    ax.set_ylabel('Mean Absolute Error (years)')
-    ax.set_title('Method Comparison - Mean Absolute Error')
-    ax.grid(True, alpha=0.3, axis='y')
-    
-    # Save plot to base64 string
-    img = BytesIO()
-    fig.savefig(img, format='png', bbox_inches='tight')
-    img.seek(0)
-    plot_url = base64.b64encode(img.getvalue()).decode()
-    plt.close(fig)
-    
-    return plot_url
+@main.route('/clear_chart_cache')
+@role_required('supervisor')
+def clear_chart_cache():
+    """Clear the chart cache"""
+    global chart_cache
+    chart_cache = {}
+    flash('Chart cache cleared successfully.')
+    return redirect(url_for('main.analysis'))
 
 @main.route('/export_patients')
 @role_required('supervisor')
@@ -828,7 +961,8 @@ def export_patients():
     has_more = True
     
     while has_more:
-        patients = Patient.query.offset(offset).limit(batch_size).all()
+        # Order patients by patient_id numerically to ensure sequential order in export
+        patients = Patient.query.order_by(cast(Patient.patient_id, db.Integer)).offset(offset).limit(batch_size).all()
         if not patients:
             has_more = False
             continue

@@ -144,9 +144,15 @@
                             
                             const formData = new FormData(this);
                             
+                            // Get CSRF token from the form
+                            const csrfToken = formData.get('csrf_token');
+                            
                             fetch('/estimate_age', {
                                 method: 'POST',
-                                body: formData
+                                body: formData,
+                                headers: {
+                                    'X-CSRF-Token': csrfToken
+                                }
                             })
                             .then(response => response.text())
                             .then(html => {

@@ -24,6 +24,7 @@
         </div>
         
         <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-group">
                 <label for="csv_file">Select CSV or Excel File:</label>
                 <input type="file" id="csv_file" name="csv_file" accept=".csv,.xlsx,.xls" required>
@@ -39,6 +40,7 @@
         <h3>Add New Patient</h3>
         
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-group">
                 <label for="patient_id">Patient ID:</label>
                 <input type="text" id="patient_id" name="patient_id" required>
@@ -122,6 +124,7 @@
                         <a href="/upload_opg/{{ patient.id }}" class="btn btn-success">Upload OPG</a>
                         <a href="/patients/update/{{ patient.id }}" class="btn btn-warning">Update</a>
                         <form method="POST" action="/patients/delete/{{ patient.id }}" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <button type="submit" class="btn btn-danger">Delete</button>
                         </form>
                     </div>

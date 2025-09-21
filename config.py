@@ -14,6 +14,10 @@ class Config:
     SQLALCHEMY_DATABASE_URI = database_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
+    # Validate database URL format
+    if database_url and not database_url.startswith(("postgresql://", "sqlite://")):
+        raise ValueError(f"Invalid database URL: {database_url}. Must start with postgresql:// or sqlite://")
+    
     # Security settings
     SESSION_COOKIE_SECURE = os.environ.get('FLASK_ENV') == 'production'  # Only send cookies over HTTPS in production
     SESSION_COOKIE_HTTPONLY = True  # Prevent XSS attacks

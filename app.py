@@ -27,6 +27,9 @@ def create_app(config_name='default'):
         app.logger.addHandler(stream_handler)
         app.logger.setLevel(logging.INFO)
         app.logger.info('Dental Age Estimation System startup')
+        app.logger.info(f'FLASK_ENV: {os.environ.get("FLASK_ENV", "not set")}')
+        app.logger.info(f'DATABASE_URL: {os.environ.get("DATABASE_URL", "not set")}')
+        app.logger.info(f'Configured database URI: {app.config.get("SQLALCHEMY_DATABASE_URI", "not set")}')
     
     # Session configuration for security
     app.permanent_session_lifetime = datetime.timedelta(minutes=30)
@@ -109,6 +112,10 @@ def create_app(config_name='default'):
     @app.route('/setup')
     def setup():
         try:
+            app.logger.info(f'FLASK_ENV: {os.environ.get("FLASK_ENV", "not set")}')
+            app.logger.info(f'DATABASE_URL: {os.environ.get("DATABASE_URL", "not set")}')
+            app.logger.info(f'Configured database URI: {app.config.get("SQLALCHEMY_DATABASE_URI", "not set")}')
+            
             from setup_db import init_db
             init_db(app)
             app.logger.info("Database initialized successfully")

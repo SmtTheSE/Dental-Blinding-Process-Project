@@ -421,8 +421,15 @@ def delete_patient(patient_id):
     if patient.opg_link and patient.opg_link.startswith('http'):
         try:
             from utils.storage import delete_image
-            # Extract filename from URL
-            filename = patient.opg_link.split('/')[-1]
+            # Extract filename from URL - works for both public URLs and signed URLs
+            # For signed URLs, we need to extract the path before the query parameters
+            if '?' in patient.opg_link:
+                # Signed URL - extract filename from path before query parameters
+                path_part = patient.opg_link.split('?')[0]
+                filename = path_part.split('/')[-1]
+            else:
+                # Regular URL - extract filename from last part of URL
+                filename = patient.opg_link.split('/')[-1]
             delete_image(filename)
         except:
             pass  # If deletion fails, continue anyway

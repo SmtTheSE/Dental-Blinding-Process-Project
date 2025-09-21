@@ -44,6 +44,28 @@ def update_user_table():
         db.session.rollback()
         raise e
 
+def update_patient_table():
+    """Update patient table structure if needed"""
+    # This function should be called within an app context
+    from sqlalchemy import text
+    
+    try:
+        # Check the current size of the opg_link column
+        result = db.session.execute(text("""
+            SELECT character_maximum_length
+            FROM information_schema.columns 
+            WHERE table_name = 'patient' AND column_name = 'opg_link'
+        """)).fetchone()
+        
+        if result and result[0] < 500:
+            # Increase the size of opg_link column to accommodate Supabase signed URLs
+            db.session.execute(text("ALTER TABLE patient ALTER COLUMN opg_link TYPE VARCHAR(500)"))
+            
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        raise e
+
 def create_indexes():
     """Create database indexes for better performance"""
     # This function should be called within an app context
@@ -89,6 +111,10 @@ def init_db(app=None):
             # Update user table structure
             update_user_table()
             app_to_use.logger.info("User table structure updated")
+            
+            # Update patient table structure
+            update_patient_table()
+            app_to_use.logger.info("Patient table structure updated")
             
             # Create indexes for better performance
             create_indexes()

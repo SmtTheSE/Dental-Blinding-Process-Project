@@ -30,7 +30,7 @@ class Patient(db.Model):
     sex = db.Column(db.String(10), nullable=False)  # 'male' or 'female'
     
     # Thumbnail or link to the patient's Orthopantomogram
-    opg_link = db.Column(db.String(200), nullable=True)
+    opg_link = db.Column(db.String(500), nullable=True)
     
     # Randomized code related to AlQahtani method
     code_a = db.Column(db.String(50), unique=True, nullable=True)

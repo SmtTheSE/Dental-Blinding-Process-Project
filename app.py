@@ -1,3 +1,9 @@
+from app import create_app
+
+app = create_app()
+
+if __name__ == "__main__":
+    app.run()
 import logging
 import os
 import datetime
@@ -118,4 +124,7 @@ def create_app(config_name='default'):
 if __name__ == '__main__':
     app = create_app()
     port = int(os.environ.get('PORT', 5001))  # Changed default port to 5001 to avoid conflicts
-    app.run(host='0.0.0.0', port=port)  # Removed debug=True for production
+    app.run(host='0.0.0.0', port=port, debug=True)  # Restored debug=True
+
+# Application factory for gunicorn
+app = create_app()

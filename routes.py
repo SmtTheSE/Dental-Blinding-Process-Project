@@ -1026,24 +1026,44 @@ def export_patients():
             
             # Handle image embedding if image exists
             if patient.opg_link:
-                # Extract filename from the path
-                image_path = patient.opg_link.lstrip('/')
-                if os.path.exists(image_path):
-                    try:
-                        # Load and resize image
-                        img = ExcelImage(image_path)
-                        # Resize image to fit in the cell
-                        img.width = 100
-                        img.height = 100
-                        
-                        # Add image to the worksheet
-                        ws.add_image(img, f'E{row_idx}')
-                    except Exception as e:
-                        # If there's an error loading the image, put error message in the cell
-                        ws.cell(row=row_idx, column=5, value=f"Error loading image: {str(e)}")
-                else:
-                    # If image file doesn't exist, put a note in the cell
-                    ws.cell(row=row_idx, column=5, value="Image not found")
+                try:
+                    if patient.opg_link.startswith('http'):
+                        # Handle Supabase image URL
+                        # Download the image from the URL
+                        import urllib.request
+                        import tempfile
+                        # Create a temporary file
+                        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
+                            tmp_filename = tmp_file.name
+                            # Download image to temporary file
+                            urllib.request.urlretrieve(patient.opg_link, tmp_filename)
+                            # Load and resize image
+                            img = ExcelImage(tmp_filename)
+                            # Resize image to fit in the cell
+                            img.width = 100
+                            img.height = 100
+                            # Add image to the worksheet
+                            ws.add_image(img, f'E{row_idx}')
+                            # Clean up temporary file
+                            os.unlink(tmp_filename)
+                    else:
+                        # Handle local image file
+                        # Extract filename from the path
+                        image_path = patient.opg_link.lstrip('/')
+                        if os.path.exists(image_path):
+                            # Load and resize image
+                            img = ExcelImage(image_path)
+                            # Resize image to fit in the cell
+                            img.width = 100
+                            img.height = 100
+                            # Add image to the worksheet
+                            ws.add_image(img, f'E{row_idx}')
+                        else:
+                            # If image file doesn't exist, put a note in the cell
+                            ws.cell(row=row_idx, column=5, value="Image not found")
+                except Exception as e:
+                    # If there's an error loading the image, put error message in the cell
+                    ws.cell(row=row_idx, column=5, value=f"Error loading image: {str(e)}")
         
         offset += len(patients)
         if len(patients) < batch_size:

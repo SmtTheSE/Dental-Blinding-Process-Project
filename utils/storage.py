@@ -1,5 +1,6 @@
 import os
 from supabase import create_client, Client
+from datetime import datetime, timedelta
 
 def get_supabase_client() -> Client:
     """
@@ -48,9 +49,11 @@ def upload_image(file, filename: str) -> str:
         if hasattr(res, 'error') and res.error:
             raise Exception(f"Upload failed: {res.error}")
         
-        # Generate public URL
-        public_url = supabase.storage.from_(bucket).get_public_url(filename)
-        return public_url
+        # Generate signed URL that expires in 1 year (for permanent access)
+        # This is needed when RLS (Row Level Security) is enabled
+        expiry_time = int((datetime.now() + timedelta(days=365)).timestamp())
+        signed_url = supabase.storage.from_(bucket).create_signed_url(filename, expiry_time)
+        return signed_url.get("signedURL") or signed_url
         
     except Exception as e:
         raise Exception(f"Failed to upload image to Supabase: {str(e)}")

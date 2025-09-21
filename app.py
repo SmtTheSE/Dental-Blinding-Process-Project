@@ -125,9 +125,20 @@ def create_app(config_name='default'):
             else:
                 return "Database initialization failed", 500
         except Exception as e:
-            app.logger.error(f"Error initializing database: {str(e)}")
+            error_msg = str(e)
+            app.logger.error(f"Error initializing database: {error_msg}")
             app.logger.error(traceback.format_exc())
-            return f"Error initializing database: {str(e)}", 500
+            
+            # Provide specific guidance for common issues
+            if "localhost" in error_msg or "127.0.0.1" in error_msg:
+                return ("Database connection failed. The application is trying to connect to a local database "
+                        "which doesn't exist in the Render environment. Please ensure that:\n"
+                        "1. You have a PostgreSQL database service in Render\n"
+                        "2. The DATABASE_URL environment variable is properly set\n"
+                        "3. Your web service is linked to the database service\n\n"
+                        f"Error details: {error_msg}"), 500
+            else:
+                return f"Error initializing database: {error_msg}", 500
     
     return app
 

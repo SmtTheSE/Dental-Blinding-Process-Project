@@ -52,8 +52,15 @@ def upload_image(file, filename: str) -> str:
         # Generate signed URL that expires in 1 year (for permanent access)
         # This is needed when RLS (Row Level Security) is enabled
         expiry_time = int((datetime.now() + timedelta(days=365)).timestamp())
-        signed_url = supabase.storage.from_(bucket).create_signed_url(filename, expiry_time)
-        return signed_url.get("signedURL") or signed_url
+        signed_url_data = supabase.storage.from_(bucket).create_signed_url(filename, expiry_time)
+        
+        # Properly extract the signed URL from the response
+        if isinstance(signed_url_data, dict):
+            # Newer versions of supabase return a dict
+            return signed_url_data.get("signedURL") or str(signed_url_data)
+        else:
+            # Older versions might return the URL directly
+            return str(signed_url_data)
         
     except Exception as e:
         raise Exception(f"Failed to upload image to Supabase: {str(e)}")

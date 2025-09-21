@@ -48,6 +48,17 @@ def create_app(config_name='default'):
     # Initialize extensions
     db.init_app(app)
     
+    # Run database setup on Render deployments
+    if is_render:
+        with app.app_context():
+            try:
+                from setup_db import init_db
+                init_db(app)
+                app.logger.info("Database initialized successfully on Render")
+            except Exception as e:
+                app.logger.error(f"Failed to initialize database on Render: {str(e)}")
+                app.logger.error(traceback.format_exc())
+    
     # Register blueprints
     app.register_blueprint(auth)
     app.register_blueprint(main)
@@ -68,8 +79,16 @@ def create_app(config_name='default'):
         if not app.config['DEBUG'] and app.config.get('SESSION_COOKIE_SECURE', False):
             response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
             
-        # Content security policy - allow inline images for charts
-        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+        # Content security policy - allow inline images for charts and Supabase images
+        supabase_url = os.environ.get('SUPABASE_URL', '').replace('https://', '')
+        if supabase_url:
+            # Extract the domain from the Supabase URL
+            supabase_domain = supabase_url.split('/')[0] if '/' in supabase_url else supabase_url
+            csp = f"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://{supabase_domain}"
+        else:
+            csp = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:"
+        
+        response.headers['Content-Security-Policy'] = csp
         
         return response
     

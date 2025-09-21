@@ -492,7 +492,24 @@ def upload_opg(patient_id):
                 
                 try:
                     # Import Supabase storage utility
-                    from utils.storage import upload_image
+                    from utils.storage import upload_image, delete_image
+                    
+                    # If patient already has an OPG image, delete it from Supabase first
+                    if patient.opg_link and patient.opg_link.startswith('http'):
+                        try:
+                            # Extract filename from URL - works for both public URLs and signed URLs
+                            # For signed URLs, we need to extract the path before the query parameters
+                            if '?' in patient.opg_link:
+                                # Signed URL - extract filename from path before query parameters
+                                path_part = patient.opg_link.split('?')[0]
+                                old_filename = path_part.split('/')[-1]
+                            else:
+                                # Regular URL - extract filename from last part of URL
+                                old_filename = patient.opg_link.split('/')[-1]
+                            delete_image(old_filename)
+                        except Exception as e:
+                            # Log error but continue with upload
+                            current_app.logger.error(f"Failed to delete old image: {str(e)}")
                     
                     # Upload to Supabase
                     file_url = upload_image(file, filename)

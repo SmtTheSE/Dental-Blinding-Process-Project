@@ -1035,3 +1035,58 @@ def export_patients():
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment;filename=patients.xlsx"}
     )
+
+@main.route('/reset-passwords', methods=['GET', 'POST'])
+def reset_passwords():
+    """Temporary route to reset default user passwords"""
+    if request.method == 'POST':
+        # Only allow this in development or with explicit environment variable
+        if os.environ.get('FLASK_ENV') != 'development' and not os.environ.get('ALLOW_PASSWORD_RESET'):
+            flash('Password reset not allowed in production without ALLOW_PASSWORD_RESET environment variable')
+            return redirect(url_for('auth.login'))
+            
+        supervisor = User.query.filter_by(username='supervisor').first()
+        pi = User.query.filter_by(username='pi').first()
+        
+        if supervisor:
+            supervisor.password = generate_password_hash('supervisor')
+            
+        if pi:
+            pi.password = generate_password_hash('pi')
+            
+        db.session.commit()
+        flash('Passwords reset to default values. Username: supervisor, Password: supervisor for supervisor. Username: pi, Password: pi for PI.')
+        return redirect(url_for('auth.login'))
+    
+    return '''
+    <div style="padding: 20px;">
+        <h2>Reset Default User Passwords</h2>
+        <p>This will reset the passwords for supervisor and pi users to their default values.</p>
+        <form method="POST">
+            <input type="submit" value="Reset Passwords" 
+                   onclick="return confirm('Are you sure you want to reset the passwords?')">
+        </form>
+        <p><a href="/">Back to Login</a></p>
+    </div>
+    '''
+
+@main.route('/view-users')
+def view_users():
+    """Temporary route to view user information"""
+    # Only allow this in development or with explicit environment variable
+    if os.environ.get('FLASK_ENV') != 'development' and not os.environ.get('ALLOW_PASSWORD_RESET'):
+        flash('User view not allowed in production without ALLOW_PASSWORD_RESET environment variable')
+        return redirect(url_for('auth.login'))
+    
+    users = User.query.all()
+    users_html = ""
+    for user in users:
+        users_html += f"<p>ID: {user.id}, Username: {user.username}, Role: {user.role}, Password Hash: {user.password}</p>"
+    
+    return f'''
+    <div style="padding: 20px;">
+        <h2>User Information</h2>
+        {users_html}
+        <p><a href="/">Back to Login</a></p>
+    </div>
+    '''

@@ -7,16 +7,25 @@ class Config:
     
     # Database configuration - support both local and Render PostgreSQL
     # Handle both postgres:// and postgresql:// prefixes
-    database_url = os.environ.get('DATABASE_URL') or 'postgresql://sittminthar@localhost:5432/dental_scheduler'
+    database_url = os.environ.get('DATABASE_URL')
+    
+    # Special handling for Render deployment
+    if not database_url:
+        # Check if we're in Render environment by checking for other Render-specific variables
+        if os.environ.get('RENDER'):
+            # In Render environment but DATABASE_URL not set - this is an error condition
+            raise ValueError("DATABASE_URL environment variable is not set. "
+                           "Please ensure your PostgreSQL database is created and linked to your web service.")
+        else:
+            # Local development fallback
+            database_url = 'postgresql://sittminthar@localhost:5432/dental_scheduler'
+    
+    # Fix the protocol if needed
     if database_url and database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
     
     SQLALCHEMY_DATABASE_URI = database_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    
-    # Validate database URL format
-    if database_url and not database_url.startswith(("postgresql://", "sqlite://")):
-        raise ValueError(f"Invalid database URL: {database_url}. Must start with postgresql:// or sqlite://")
     
     # Security settings
     SESSION_COOKIE_SECURE = os.environ.get('FLASK_ENV') == 'production'  # Only send cookies over HTTPS in production

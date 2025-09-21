@@ -15,7 +15,19 @@ def create_app(config_name='default'):
         config_name = os.environ.get('FLASK_ENV', 'production')  # Changed default to production
     
     app = Flask(__name__, static_folder='static')
-    app.config.from_object(config[config_name])
+    
+    # Check if we're in Render environment
+    is_render = bool(os.environ.get('RENDER'))
+    
+    try:
+        app.config.from_object(config[config_name])
+    except ValueError as e:
+        if is_render and "DATABASE_URL environment variable is not set" in str(e):
+            # This is the specific error we expect in Render when DB is not linked
+            print("CRITICAL ERROR: DATABASE_URL is not set in Render environment!")
+            print("Please ensure your PostgreSQL database is created and linked to your web service.")
+            print("Check your render.yaml configuration and Render dashboard settings.")
+        raise e
     
     # Set up logging
     if not app.debug and not app.testing:
@@ -28,6 +40,7 @@ def create_app(config_name='default'):
         app.logger.addHandler(stream_handler)
         app.logger.setLevel(logging.INFO)
         app.logger.info('Dental Age Estimation System startup')
+        app.logger.info(f'RENDER environment: {is_render}')
         app.logger.info(f'FLASK_ENV: {os.environ.get("FLASK_ENV", "not set")}')
         app.logger.info(f'DATABASE_URL: {os.environ.get("DATABASE_URL", "not set")}')
         app.logger.info(f'Configured database URI: {app.config.get("SQLALCHEMY_DATABASE_URI", "not set")}')
@@ -113,9 +126,25 @@ def create_app(config_name='default'):
     @app.route('/setup')
     def setup():
         try:
+            is_render = bool(os.environ.get('RENDER'))
+            app.logger.info(f'RENDER environment: {is_render}')
             app.logger.info(f'FLASK_ENV: {os.environ.get("FLASK_ENV", "not set")}')
             app.logger.info(f'DATABASE_URL: {os.environ.get("DATABASE_URL", "not set")}')
             app.logger.info(f'Configured database URI: {app.config.get("SQLALCHEMY_DATABASE_URI", "not set")}')
+            
+            # Check for common deployment issues
+            if is_render and not os.environ.get('DATABASE_URL'):
+                error_msg = ("CRITICAL ERROR: DATABASE_URL environment variable is not set!\n\n"
+                           "This typically happens when:\n"
+                           "1. Your PostgreSQL database service is not created\n"
+                           "2. Your web service is not linked to the database service\n"
+                           "3. There's an issue with your render.yaml configuration\n\n"
+                           "Please check:\n"
+                           "- That you have a database service named 'dental-db' in your render.yaml\n"
+                           "- That your web service has DATABASE_URL configured to use fromDatabase\n"
+                           "- Your Render dashboard to ensure the database is created and linked")
+                app.logger.error(error_msg)
+                return error_msg, 500
             
             from setup_db import init_db
             success = init_db(app)

@@ -80,7 +80,7 @@ def create_app(config_name='default'):
     
     @app.route('/debug/csrf')
     def debug_csrf():
-        from auth import generate_csrf_token
+        from routes import generate_csrf_token
         token = generate_csrf_token()
         return {
             'session_token': session.get('csrf_token'),
@@ -102,7 +102,7 @@ def create_app(config_name='default'):
             return redirect(url_for('main.dashboard'))
         app.logger.info("Showing login page")
         # Make sure CSRF token is generated for the login page
-        from auth import generate_csrf_token
+        from routes import generate_csrf_token
         generate_csrf_token()
         return render_template('login.html')
     

@@ -34,10 +34,6 @@ except:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
-# Configure upload folder
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-
 # Simple in-memory cache for charts (in production, use Redis or similar)
 chart_cache = {}
 
@@ -46,7 +42,7 @@ CHART_CACHE_TIMEOUT = 3600
 
 # Configure upload folder
 UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'csv', 'xlsx', 'xls'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -167,7 +163,7 @@ def manage_patients():
             file = request.files['csv_file']
             if file and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
-                if filename.endswith('.csv'):
+                if filename.endswith(('.csv',)):
                     # Process CSV upload
                     stream = StringIO(file.stream.read().decode("UTF8"), newline=None)
                     csv_input = csv.reader(stream)
@@ -232,12 +228,12 @@ def manage_patients():
                         db.session.rollback()
                         flash(f'Error importing CSV: {str(e)}')
                         
-                else:  # Excel file
+                elif filename.endswith(('.xlsx', '.xls')):
                     # Process Excel upload
                     try:
                         # Save file to a temporary location to process with openpyxl
                         file.stream.seek(0)
-                        temp_file_path = os.path.join('/tmp', file.filename)
+                        temp_file_path = os.path.join('/tmp', filename)
                         file.save(temp_file_path)
                         
                         # Load workbook

@@ -16,7 +16,7 @@
 </form>
 
 <div class="search-loading">
-    <p>Loading...</p>
+    <p>Searching...</p>
 </div>
 
 <div id="search-results-container">
@@ -59,7 +59,7 @@
         </tr>
         {% endfor %}
     </table>
-    
+
     <!-- Pagination Controls -->
     {% if patients.pages > 1 %}
     <div class="pagination">
@@ -95,13 +95,7 @@
     {% else %}
     <div style="background: white; padding: 2rem; text-align: center; border-radius: var(--border-radius); box-shadow: var(--box-shadow);">
         <h3>No Blinded Data Available</h3>
-        <p>
-            {% if search_query %}
-                No entries match your search query: <strong>"{{ search_query }}"</strong>.
-            {% else %}
-                No blinded data has been generated yet. Please ask the supervisor to assign codes to patients.
-            {% endif %}
-        </p>
+        <p>{% if search_query %}No entries match your search query: <strong>"{{ search_query }}"</strong>.{% else %}No blinded data has been generated yet. Please ask the supervisor to assign codes to patients.{% endif %}</p>
         <div style="margin-top: 1rem;">
             <a href="/" class="btn">Home</a>
         </div>
@@ -121,60 +115,66 @@
 </div>
 
 <script>
-    // Handle estimate button clicks
-    document.querySelectorAll('.estimate-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const code = this.getAttribute('data-code');
-            const method = this.getAttribute('data-method');
-            const opg = this.getAttribute('data-opg');
-            const sex = this.getAttribute('data-sex');
-            
-            // Show modal with estimation form
-            fetch(`/get_estimation_form?code=${encodeURIComponent(code)}&method=${encodeURIComponent(method)}&opg=${encodeURIComponent(opg)}&sex=${encodeURIComponent(sex)}`)
-                .then(response => response.text())
-                .then(html => {
-                    document.getElementById('estimation-content').innerHTML = html;
-                    document.getElementById('estimation-modal').style.display = 'block';
-                    
-                    // Handle form submission
-                    const form = document.getElementById('estimation-form');
-                    if (form) {
-                        form.addEventListener('submit', function(e) {
-                            e.preventDefault();
-                            
-                            const formData = new FormData(this);
-                            
-                            // Get CSRF token from the form
-                            const csrfToken = formData.get('csrf_token');
-                            
-                            fetch('/estimate_age', {
-                                method: 'POST',
-                                body: formData,
-                                headers: {
-                                    'X-CSRF-Token': csrfToken
-                                }
-                            })
-                            .then(response => response.text())
-                            .then(html => {
-                                // Reload the page to show updated data
-                                location.reload();
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle estimate button clicks
+        document.querySelectorAll('.estimate-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const code = this.getAttribute('data-code');
+                const method = this.getAttribute('data-method');
+                const opg = this.getAttribute('data-opg');
+                const sex = this.getAttribute('data-sex');
+                
+                // Show modal with estimation form
+                fetch(`/get_estimation_form?code=${encodeURIComponent(code)}&method=${encodeURIComponent(method)}&opg=${encodeURIComponent(opg)}&sex=${encodeURIComponent(sex)}`)
+                    .then(response => response.text())
+                    .then(html => {
+                        document.getElementById('estimation-content').innerHTML = html;
+                        document.getElementById('estimation-modal').style.display = 'block';
+                        
+                        // Handle form submission
+                        const form = document.getElementById('estimation-form');
+                        if (form) {
+                            form.addEventListener('submit', function(e) {
+                                e.preventDefault();
+                                
+                                const formData = new FormData(this);
+                                
+                                fetch('/estimate_age', {
+                                    method: 'POST',
+                                    body: formData
+                                })
+                                .then(response => response.text())
+                                .then(html => {
+                                    // Close modal and reload the page to show updated data
+                                    document.getElementById('estimation-modal').style.display = 'none';
+                                    location.reload();
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    // Close modal and reload even if there's an error
+                                    document.getElementById('estimation-modal').style.display = 'none';
+                                    location.reload();
+                                });
                             });
-                        });
-                    }
-                });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+            });
         });
-    });
-    
-    // Handle modal close
-    document.getElementById('close-modal').addEventListener('click', function() {
-        document.getElementById('estimation-modal').style.display = 'none';
-    });
-    
-    // Close modal when clicking outside
-    window.addEventListener('click', function(event) {
-        const modal = document.getElementById('estimation-modal');
-        if (event.target === modal) {
-            modal.style.display = 'none';
-        }
+        
+        // Handle modal close
+        document.getElementById('close-modal').addEventListener('click', function() {
+            document.getElementById('estimation-modal').style.display = 'none';
+        });
+        
+        // Close modal when clicking outside
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('estimation-modal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
     });
 </script>

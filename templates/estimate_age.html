@@ -100,13 +100,7 @@
         {% else %}
         <div style="background: white; padding: 2rem; text-align: center; border-radius: var(--border-radius); box-shadow: var(--box-shadow);">
             <h3>No Blinded Data Available</h3>
-            <p>
-                {% if search_query %}
-                    No entries match your search query: <strong>"{{ search_query }}"</strong>.
-                {% else %}
-                    No blinded data has been generated yet. Please ask the supervisor to assign codes to patients.
-                {% endif %}
-            </p>
+            <p>{% if search_query %}No entries match your search query: <strong>"{{ search_query }}"</strong>.{% else %}No blinded data has been generated yet. Please ask the supervisor to assign codes to patients.{% endif %}</p>
             <div style="margin-top: 1rem;">
                 <a href="/" class="btn">Home</a>
             </div>

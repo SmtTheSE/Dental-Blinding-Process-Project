@@ -4,7 +4,7 @@ services:
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn --bind 0.0.0.0:$PORT app:app
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 app:app
     envVars:
       - key: FLASK_ENV
         value: production
@@ -14,7 +14,15 @@ services:
         fromDatabase:
           name: dental-db
           property: connectionString
+      - key: PYTHONPATH
+        value: /opt/render/project/src/.pythonlibs/lib/python3.11/site-packages
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
 
 databases:
   - name: dental-db
     plan: free
+    databaseName: dental_scheduler
+    user: dental_user

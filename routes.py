@@ -417,8 +417,18 @@ def update_patient(id):
 def delete_patient(patient_id):
     patient = Patient.query.get_or_404(patient_id)
     
-    # Delete OPG image file if it exists
-    if patient.opg_link:
+    # Delete OPG image from Supabase if it exists
+    if patient.opg_link and patient.opg_link.startswith('http'):
+        try:
+            from utils.storage import delete_image
+            # Extract filename from URL
+            filename = patient.opg_link.split('/')[-1]
+            delete_image(filename)
+        except:
+            pass  # If deletion fails, continue anyway
+    
+    # Delete OPG image file if it exists locally (for backward compatibility)
+    if patient.opg_link and not patient.opg_link.startswith('http'):
         try:
             os.remove(os.path.join(current_app.root_path, patient.opg_link))
         except:
@@ -472,11 +482,19 @@ def upload_opg(patient_id):
                     os.makedirs(UPLOAD_FOLDER)
                 
                 filename = secure_filename(f"{patient.patient_id}_{file.filename}")
-                file_path = os.path.join(UPLOAD_FOLDER, filename)
-                file.save(file_path)
                 
-                # Store relative path in database
-                patient.opg_link = f"/{UPLOAD_FOLDER}/{filename}"
+                try:
+                    # Import Supabase storage utility
+                    from utils.storage import upload_image
+                    
+                    # Upload to Supabase
+                    file_url = upload_image(file, filename)
+                    
+                    # Store URL in database
+                    patient.opg_link = file_url
+                except Exception as e:
+                    flash(f'Error uploading OPG: {str(e)}')
+                    return redirect(url_for('main.upload_opg', patient_id=patient_id))
                 db.session.commit()
                 flash('OPG uploaded successfully')
                 return redirect(url_for('main.manage_patients'))
@@ -491,7 +509,12 @@ def uploaded_file(filename):
         return redirect(url_for('auth.login'))
     
     # Return the file from the uploads directory
-    return send_from_directory(UPLOAD_FOLDER, filename)
+    # For backward compatibility with local files
+    try:
+        return send_from_directory(UPLOAD_FOLDER, filename)
+    except:
+        flash('File not found')
+        return redirect(url_for('main.manage_patients'))
 
 @main.route('/blinded_data')
 @role_required('supervisor')

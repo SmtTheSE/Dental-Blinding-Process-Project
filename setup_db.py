@@ -4,7 +4,8 @@ from models import db, User
 from werkzeug.security import generate_password_hash
 import secrets
 
-app = create_app()
+# Use production config by default
+app = create_app('production')
 
 def generate_secure_password(length=12):
     """Generate a secure random password"""
@@ -50,63 +51,72 @@ def update_user_table():
 def create_indexes():
     """Create database indexes for better performance"""
     with app.app_context():
-        from sqlalchemy import text
-        
         try:
             # Create indexes on frequently queried columns
-            indexes = [
-                ("CREATE INDEX IF NOT EXISTS idx_patient_patient_id ON \"patient\" (patient_id)", "idx_patient_patient_id"),
-                ("CREATE INDEX IF NOT EXISTS idx_patient_code_a ON \"patient\" (code_a)", "idx_patient_code_a"),
-                ("CREATE INDEX IF NOT EXISTS idx_patient_code_b ON \"patient\" (code_b)", "idx_patient_code_b"),
-                ("CREATE INDEX IF NOT EXISTS idx_estimation_entry_code ON \"estimation_entry\" (code)", "idx_estimation_entry_code")
-            ]
+            from sqlalchemy import text
             
-            for index_sql, index_name in indexes:
-                db.session.execute(text(index_sql))
-                app.logger.info(f"Created index: {index_name}")
-                
+            # Index on patient_id for faster lookups
+            db.session.execute(text("CREATE INDEX IF NOT EXISTS idx_patient_patient_id ON patient (patient_id)"))
+            
+            # Index on code_a and code_b for faster blinded data queries
+            db.session.execute(text("CREATE INDEX IF NOT EXISTS idx_patient_code_a ON patient (code_a)"))
+            db.session.execute(text("CREATE INDEX IF NOT EXISTS idx_patient_code_b ON patient (code_b)"))
+            
+            # Index on estimation entry codes
+            db.session.execute(text("CREATE INDEX IF NOT EXISTS idx_estimation_entry_code ON estimation_entry (code)"))
+            
             db.session.commit()
+            app.logger.info("Database indexes created successfully")
         except Exception as e:
             app.logger.error(f"Error creating indexes: {str(e)}")
             db.session.rollback()
 
-with app.app_context():
-    # Create all tables
-    db.create_all()
+def init_db(app=None):
+    """Initialize the database with all required tables, indexes, and default users"""
+    # Use the passed app or the global one
+    app_to_use = app or globals().get('app')
     
-    # Update user table with new columns
-    update_user_table()
-    
-    # Create database indexes for better performance
-    create_indexes()
-    
-    # Check if default users exist, if not create them
-    supervisor = User.query.filter_by(username='supervisor').first()
-    pi = User.query.filter_by(username='pi').first()
-    
-    if not supervisor and not pi:
-        # Create default users with securely hashed passwords
-        supervisor = User(
-            username='supervisor',
-            password=generate_password_hash('supervisor', method='pbkdf2:sha256', salt_length=16),
-            role='supervisor'
-        )
-        db.session.add(supervisor)
+    with app_to_use.app_context():
+        # Create all tables
+        db.create_all()
+        app_to_use.logger.info("Database tables created")
         
-        pi = User(
-            username='pi',
-            password=generate_password_hash('pi', method='pbkdf2:sha256', salt_length=16),
-            role='pi'
-        )
-        db.session.add(pi)
+        # Update user table structure
+        update_user_table()
         
-        db.session.commit()
-        app.logger.info('Database setup complete! Tables created and default users added.')
-        print('Database setup complete! Tables created and default users added.')
-        print('SECURITY WARNING: Please change the default passwords immediately!')
-        print('Default credentials:')
-        print('  Supervisor: username=supervisor, password=supervisor')
-        print('  PI: username=pi, password=pi')
-    else:
-        app.logger.info('Default users already exist. No changes made.')
-        print('Default users already exist. No changes made.')
+        # Create indexes for better performance
+        create_indexes()
+        
+        # Create default users if they don't exist
+        supervisor = User.query.filter_by(username='supervisor').first()
+        if not supervisor:
+            supervisor_password = os.environ.get('SUPERVISOR_PASSWORD') or generate_secure_password()
+            supervisor = User(
+                username='supervisor',
+                password=generate_password_hash(supervisor_password),
+                role='supervisor'
+            )
+            db.session.add(supervisor)
+            app_to_use.logger.info(f"Created supervisor user with password: {supervisor_password}")
+        
+        pi = User.query.filter_by(username='pi').first()
+        if not pi:
+            pi_password = os.environ.get('PI_PASSWORD') or generate_secure_password()
+            pi = User(
+                username='pi',
+                password=generate_password_hash(pi_password),
+                role='pi'
+            )
+            db.session.add(pi)
+            app_to_use.logger.info(f"Created PI user with password: {pi_password}")
+        
+        try:
+            db.session.commit()
+            app_to_use.logger.info("Default users created successfully")
+        except Exception as e:
+            db.session.rollback()
+            app_to_use.logger.error(f"Error creating default users: {str(e)}")
+
+if __name__ == '__main__':
+    init_db()
+    print("Database initialized successfully!")

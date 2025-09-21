@@ -2,8 +2,11 @@ class Config:
     PASSWORD_MIN_LENGTH = 12  # Minimum password length
 import logging
 import re
+import os
+import random
+import string
 from datetime import datetime, timedelta
-from flask import Blueprint, request, render_template, redirect, url_for, flash, session, current_app
+from flask import Blueprint, request, render_template, redirect, url_for, flash, session, current_app, abort
 from models import db, User
 from werkzeug.security import check_password_hash, generate_password_hash
 from config import Config
@@ -18,9 +21,11 @@ try:
 except:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
+    logger.info("Initialized basic logger")
 
 MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_TIME = 300  # 5 minutes in seconds
+
 
 def validate_password(password):
     """Validate password strength"""
@@ -37,11 +42,36 @@ def validate_password(password):
     if not re.search(r"\d", password):
         return False, "Password must contain at least one digit"
     
+    # Check for special characters
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        return False, "Password must contain at least one special character"
+    
     return True, "Password is valid"
+
+
+def validate_csrf_token():
+    """Validate CSRF token for POST requests"""
+    token = session.get('csrf_token')
+    
+    # Handle different content types
+    if request.is_json:
+        # For JSON requests, get token from headers or JSON body
+        form_token = request.headers.get('X-CSRF-Token') or request.get_json(silent=True).get('csrf_token') if request.get_json(silent=True) else None
+    else:
+        # For form submissions, get token from form data or headers
+        form_token = request.form.get('csrf_token') or request.headers.get('X-CSRF-Token')
+    
+    if not token or not form_token or token != form_token:
+        return False
+    return True
+
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
+        # Note: CSRF protection is handled by the global CSRF protection in routes.py
+        # We don't need to manually check it here
+        
         username = request.form['username']
         password = request.form['password']
         
@@ -60,9 +90,9 @@ def login():
         if user:
             # Check if account is locked
             if user.locked_until and user.locked_until > datetime.utcnow():
-                flash('Account is temporarily locked. Please try again later.')
+                flash(f'Account is locked. Try again after {user.locked_until.strftime("%Y-%m-%d %H:%M:%S")} UTC')
                 # Log lockout event
-                logging.warning(f"Login attempt on locked account: {username}")
+                logger.warning(f"Login attempt on locked account: {username}")
                 return render_template('login.html')
                 
             if check_password_hash(user.password, password):
@@ -77,89 +107,34 @@ def login():
                 session['role'] = user.role
                 session.permanent = True  # Use permanent session
                 
-                session['user_id'] = user.id
-                session['username'] = user.username
-                session['role'] = user.role
-                
                 # Log successful login
-                logging.info(f"Successful login for user: {username}")
+                logger.info(f"Successful login for user: {username}")
                 
                 return redirect(url_for('main.dashboard'))
             else:
                 # Increment failed attempts
                 user.failed_attempts += 1
-                
-                # Lock account if too many failed attempts
                 if user.failed_attempts >= MAX_LOGIN_ATTEMPTS:
                     user.locked_until = datetime.utcnow() + timedelta(seconds=LOCKOUT_TIME)
-                    logging.warning(f"Account locked due to failed attempts: {username}")
-                
+                    flash(f'Account locked due to multiple failed attempts. Try again after {LOCKOUT_TIME//60} minutes.')
+                else:
+                    flash('Invalid username or password')
                 db.session.commit()
-                
-                flash('Invalid username or password')
-                # Log failed login attempt
-                logging.warning(f"Failed login attempt for user: {username}")
         else:
-            # Handle non-existent users securely - same response as wrong password
+            # Increment failed attempts for non-existent users too (to prevent user enumeration)
             flash('Invalid username or password')
-            # Log failed login attempt
-            logging.warning(f"Failed login attempt for non-existent user: {username}")
+            
+        return render_template('login.html')
     
-    # For GET requests or after POST processing
-    return render_template('login.html', is_post=request.method == 'POST')
+    # For GET requests, show the login page
+    return render_template('login.html')
 
 @auth.route('/logout')
 def logout():
     # Log logout
     username = session.get('username', 'unknown')
-    logging.info(f"User logged out: {username}")
+    logger.info(f"User logged out: {username}")
     
     session.clear()
+    flash('You have been logged out successfully.')
     return redirect(url_for('auth.login'))
-
-@auth.route('/change_password', methods=['GET', 'POST'])
-def change_password():
-    if 'user_id' not in session:
-        return redirect(url_for('auth.login'))
-        
-    if request.method == 'POST':
-        current_password = request.form['current_password']
-        new_password = request.form['new_password']
-        confirm_password = request.form['confirm_password']
-        
-        user = User.query.get(session['user_id'])
-        
-        if not user:
-            flash('User not found')
-            return redirect(url_for('auth.change_password'))
-            
-        # Check current password
-        if not check_password_hash(user.password, current_password):
-            flash('Current password is incorrect')
-            return redirect(url_for('auth.change_password'))
-            
-        # Validate new password
-        is_valid, message = validate_password(new_password)
-        if not is_valid:
-            flash(message)
-            return redirect(url_for('auth.change_password'))
-            
-        # Check if new password matches confirmation
-        if new_password != confirm_password:
-            flash('New passwords do not match')
-            return redirect(url_for('auth.change_password'))
-            
-        # Check if new password is different from current
-        if check_password_hash(user.password, new_password):
-            flash('New password must be different from current password')
-            return redirect(url_for('auth.change_password'))
-            
-        # Update password with stronger hashing parameters
-        user.password = generate_password_hash(new_password, method='pbkdf2:sha256', salt_length=16)
-        db.session.commit()
-        
-        flash('Password changed successfully')
-        logging.info(f"Password changed for user: {user.username}")
-        return redirect(url_for('main.dashboard'))
-        
-    return render_template('change_password.html')

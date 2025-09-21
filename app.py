@@ -11,7 +11,7 @@ from routes import main
 def create_app(config_name='default'):
     # Determine config name from environment if not explicitly provided
     if config_name == 'default':
-        config_name = os.environ.get('FLASK_ENV', 'development')
+        config_name = os.environ.get('FLASK_ENV', 'production')  # Changed default to production
     
     app = Flask(__name__, static_folder='static')
     app.config.from_object(config[config_name])
@@ -59,6 +59,13 @@ def create_app(config_name='default'):
         
         return response
     
+    @app.context_processor
+    def inject_global_csrf_token():
+        """Inject CSRF token into all templates"""
+        # Use the generate_csrf_token function from routes instead of auth
+        from routes import generate_csrf_token
+        return dict(csrf_token=generate_csrf_token())
+    
     @app.before_request
     def before_request():
         # Force HTTPS in production
@@ -71,17 +78,34 @@ def create_app(config_name='default'):
     def health_check():
         return {'status': 'healthy', 'timestamp': str(datetime.datetime.utcnow())}
     
+    @app.route('/debug/csrf')
+    def debug_csrf():
+        from auth import generate_csrf_token
+        token = generate_csrf_token()
+        return {
+            'session_token': session.get('csrf_token'),
+            'generated_token': token,
+            'tokens_match': session.get('csrf_token') == token
+        }
+    
     @app.route('/', methods=['GET', 'POST'])
     def index():
         if request.method == 'POST':
             # Handle login
             from auth import login
-            return login()
+            app.logger.info("Processing POST request to login")
+            result = login()
+            app.logger.info("Login function returned")
+            return result
         
         if 'user_id' in session:
             return redirect(url_for('main.dashboard'))
+        app.logger.info("Showing login page")
+        # Make sure CSRF token is generated for the login page
+        from auth import generate_csrf_token
+        generate_csrf_token()
         return render_template('login.html')
-
+    
     @app.route('/setup')
     def setup():
         from setup_db import init_db
@@ -93,5 +117,5 @@ def create_app(config_name='default'):
 # For gunicorn
 if __name__ == '__main__':
     app = create_app()
-    port = int(os.environ.get('PORT', 5001))
-    app.run(debug=True, host='0.0.0.0', port=port)
+    port = int(os.environ.get('PORT', 5001))  # Changed default port to 5001 to avoid conflicts
+    app.run(host='0.0.0.0', port=port)  # Removed debug=True for production

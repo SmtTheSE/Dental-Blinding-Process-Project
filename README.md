@@ -76,20 +76,42 @@ This is a web application designed for dental age estimation in children (5-12 y
 
 3. Run the setup:
    ```
-   python app.py
+   python setup_db.py
    ```
-   Then visit `http://localhost:5000/setup` to initialize the database
+   This will initialize the database with default users:
+   - Supervisor: username `supervisor`, password will be displayed in console
+   - PI: username `pi`, password will be displayed in console
 
 4. Start the application:
    ```
    python app.py
    ```
 
+## Production Deployment
+
+This application is ready for production deployment on Render.com with the included configuration files:
+
+- `render.yaml`: Defines the web service and database
+- `runtime.txt`: Specifies the Python version
+- `requirements.txt`: Lists all dependencies
+
+### Environment Variables
+
+For production deployment, you should set these environment variables:
+
+- `SECRET_KEY`: A strong secret key for Flask sessions
+- `DATABASE_URL`: PostgreSQL connection string (automatically provided by Render)
+- `FLASK_ENV`: Set to `production`
+
+### Default User Passwords
+
+During the first run, the application will generate strong passwords for the default users and display them in the logs. You should change these passwords after first login.
+
 ## Usage
 
 1. Visit `http://localhost:5000` and log in with:
-   - Supervisor: username `supervisor`, password `supervisor`
-   - PI: username `pi`, password `pi`
+   - Supervisor: username `supervisor`, password (generated during setup)
+   - PI: username `pi`, password (generated during setup)
 
 2. Supervisor workflow:
    - Add patients with their actual age and sex
@@ -105,7 +127,7 @@ This is a web application designed for dental age estimation in children (5-12 y
 
 ## Technical Implementation
 
-- **Frontend**: Flask templates (can be extended with React.js or Next.js)
+- **Frontend**: Flask templates
 - **Backend**: Python Flask
 - **Database**: PostgreSQL
 - **Export Formats**: Excel, CSV

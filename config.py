@@ -20,6 +20,9 @@ class Config:
     # Logging configuration
     LOG_LEVEL = os.environ.get('LOG_LEVEL') or 'INFO'
     
+    # File upload configuration
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
+    
 class DevelopmentConfig(Config):
     DEBUG = True
     # In development, we might need to disable some security features
@@ -35,5 +38,5 @@ class ProductionConfig(Config):
 config = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
-    'default': DevelopmentConfig
+    'default': ProductionConfig  # Changed default to ProductionConfig
 }

@@ -105,42 +105,59 @@
             box-shadow: var(--box-shadow);
         }
 
+        .btn:active {
+            transform: translateY(0);
+        }
+
         .flash-messages {
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
         }
 
         .flash-message {
-            padding: 1rem;
+            padding: 0.75rem;
             border-radius: var(--border-radius);
-            color: white;
-            font-weight: 500;
+            margin-bottom: 0.5rem;
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
         }
 
-        .flash-message.error {
-            background-color: var(--danger-color);
+        .flash-message:last-child {
+            margin-bottom: 0;
         }
 
-        .security-note {
-            background-color: #fffbeb;
-            border-left: 4px solid var(--warning-color);
-            padding: 1rem;
-            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+        .flash-message.success {
+            background-color: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        footer {
+            text-align: center;
             margin-top: 1.5rem;
+            color: var(--secondary-color);
             font-size: 0.875rem;
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                margin: 1rem;
+                padding: 1.5rem;
+            }
         }
     </style>
 </head>
 <body>
     <div class="login-container">
-        <div class="logo">🦷 <span>Dental Estimation System</span></div>
+        <div class="logo">
+            Dental Age <span>Estimation</span>
+        </div>
         
         <div class="flash-messages">
             {% with messages = get_flashed_messages() %}
                 {% if messages %}
                     {% for message in messages %}
-                        <div class="flash-message error">
-                            {{ message }}
-                        </div>
+                        <div class="flash-message">{{ message }}</div>
                     {% endfor %}
                 {% endif %}
             {% endwith %}
@@ -151,20 +168,20 @@
             
             <div class="form-group">
                 <label for="username">Username</label>
-                <input type="text" id="username" name="username" required autocomplete="username">
+                <input type="text" id="username" name="username" required>
             </div>
             
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" required autocomplete="current-password">
+                <input type="password" id="password" name="password" required>
             </div>
             
             <button type="submit" class="btn">Login</button>
         </form>
         
-        <div class="security-note">
-            <strong>Security Note:</strong> For production use, please ensure you change the default passwords and enable HTTPS.
-        </div>
+        <footer>
+            &copy; 2025 University Of Dental Medicine, Mandalay. All rights reserved.
+        </footer>
     </div>
 </body>
 </html>

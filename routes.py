@@ -1029,23 +1029,18 @@ def export_patients():
                 try:
                     if patient.opg_link.startswith('http'):
                         # Handle Supabase image URL
-                        # Download the image from the URL
+                        # Download the image from the URL directly into memory
                         import urllib.request
-                        import tempfile
-                        # Create a temporary file
-                        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
-                            tmp_filename = tmp_file.name
-                            # Download image to temporary file
-                            urllib.request.urlretrieve(patient.opg_link, tmp_filename)
+                        # Download image data
+                        with urllib.request.urlopen(patient.opg_link) as response:
+                            image_data = BytesIO(response.read())
                             # Load and resize image
-                            img = ExcelImage(tmp_filename)
+                            img = ExcelImage(image_data)
                             # Resize image to fit in the cell
                             img.width = 100
                             img.height = 100
                             # Add image to the worksheet
                             ws.add_image(img, f'E{row_idx}')
-                            # Clean up temporary file
-                            os.unlink(tmp_filename)
                     else:
                         # Handle local image file
                         # Extract filename from the path

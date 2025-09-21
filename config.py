@@ -6,25 +6,26 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
     
     # Database configuration - support both local and Render PostgreSQL
-    # Handle both postgres:// and postgresql:// prefixes
     database_url = os.environ.get('DATABASE_URL')
     
-    # Special handling for Render deployment
-    if not database_url:
-        # Check if we're in Render environment by checking for other Render-specific variables
-        if os.environ.get('RENDER'):
-            # In Render environment but DATABASE_URL not set - this is an error condition
-            raise ValueError("DATABASE_URL environment variable is not set. "
-                           "Please ensure your PostgreSQL database is created and linked to your web service.")
-        else:
-            # Local development fallback
-            database_url = 'postgresql://sittminthar@localhost:5432/dental_scheduler'
-    
-    # Fix the protocol if needed
+    # Handle both postgres:// and postgresql:// prefixes
     if database_url and database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
     
-    SQLALCHEMY_DATABASE_URI = database_url
+    # Set database URL or provide a default with warning
+    if database_url:
+        SQLALCHEMY_DATABASE_URI = database_url
+    else:
+        # Check if we're in Render environment
+        if os.environ.get('RENDER'):
+            # In Render but no DATABASE_URL - use a placeholder and warn
+            SQLALCHEMY_DATABASE_URI = 'postgresql://missing-db-url/placeholder'
+            print("WARNING: DATABASE_URL environment variable is not set!")
+            print("Please ensure your PostgreSQL database is created and linked to your web service.")
+        else:
+            # Local development fallback
+            SQLALCHEMY_DATABASE_URI = 'postgresql://sittminthar@localhost:5432/dental_scheduler'
+    
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Security settings

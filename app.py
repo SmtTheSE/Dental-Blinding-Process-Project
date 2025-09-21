@@ -19,15 +19,7 @@ def create_app(config_name='default'):
     # Check if we're in Render environment
     is_render = bool(os.environ.get('RENDER'))
     
-    try:
-        app.config.from_object(config[config_name])
-    except ValueError as e:
-        if is_render and "DATABASE_URL environment variable is not set" in str(e):
-            # This is the specific error we expect in Render when DB is not linked
-            print("CRITICAL ERROR: DATABASE_URL is not set in Render environment!")
-            print("Please ensure your PostgreSQL database is created and linked to your web service.")
-            print("Check your render.yaml configuration and Render dashboard settings.")
-        raise e
+    app.config.from_object(config[config_name])
     
     # Set up logging
     if not app.debug and not app.testing:
@@ -44,6 +36,11 @@ def create_app(config_name='default'):
         app.logger.info(f'FLASK_ENV: {os.environ.get("FLASK_ENV", "not set")}')
         app.logger.info(f'DATABASE_URL: {os.environ.get("DATABASE_URL", "not set")}')
         app.logger.info(f'Configured database URI: {app.config.get("SQLALCHEMY_DATABASE_URI", "not set")}')
+        
+        # Check for missing database URL in Render environment
+        if is_render and (not os.environ.get('DATABASE_URL') or 'missing-db-url' in app.config.get("SQLALCHEMY_DATABASE_URI", "")):
+            app.logger.warning("CRITICAL WARNING: DATABASE_URL environment variable is not set!")
+            app.logger.warning("Please ensure your PostgreSQL database is created and linked to your web service.")
     
     # Session configuration for security
     app.permanent_session_lifetime = datetime.timedelta(minutes=30)
@@ -133,7 +130,7 @@ def create_app(config_name='default'):
             app.logger.info(f'Configured database URI: {app.config.get("SQLALCHEMY_DATABASE_URI", "not set")}')
             
             # Check for common deployment issues
-            if is_render and not os.environ.get('DATABASE_URL'):
+            if is_render and (not os.environ.get('DATABASE_URL') or 'missing-db-url' in app.config.get("SQLALCHEMY_DATABASE_URI", "")):
                 error_msg = ("CRITICAL ERROR: DATABASE_URL environment variable is not set!\n\n"
                            "This typically happens when:\n"
                            "1. Your PostgreSQL database service is not created\n"
@@ -144,7 +141,7 @@ def create_app(config_name='default'):
                            "- That your web service has DATABASE_URL configured to use fromDatabase\n"
                            "- Your Render dashboard to ensure the database is created and linked")
                 app.logger.error(error_msg)
-                return error_msg, 500
+                return error_msg.replace('\n', '<br>'), 500
             
             from setup_db import init_db
             success = init_db(app)
@@ -159,7 +156,10 @@ def create_app(config_name='default'):
             app.logger.error(traceback.format_exc())
             
             # Provide specific guidance for common issues
-            if "localhost" in error_msg or "127.0.0.1" in error_msg:
+            if "missing-db-url" in error_msg:
+                return ("Database connection failed. The DATABASE_URL environment variable is not set. "
+                        "Please ensure your PostgreSQL database is created and linked to your web service."), 500
+            elif "localhost" in error_msg or "127.0.0.1" in error_msg:
                 return ("Database connection failed. The application is trying to connect to a local database "
                         "which doesn't exist in the Render environment. Please ensure that:\n"
                         "1. You have a PostgreSQL database service in Render\n"

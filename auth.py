@@ -192,3 +192,57 @@ def logout():
     session.clear()
     flash('You have been logged out successfully.')
     return redirect(url_for('auth.login'))
+
+# Move the login_required decorator to auth.py to avoid circular imports
+def login_required(func):
+    from functools import wraps
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('auth.login'))
+        return func(*args, **kwargs)
+    return wrapper
+
+@auth.route('/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    if request.method == 'POST':
+        # Validate CSRF token
+        if not validate_csrf_token():
+            flash('Security token validation failed. Please try again.')
+            return render_template('change_password.html')
+        
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        # Get current user
+        user = User.query.get(session['user_id'])
+        if not user:
+            flash('User not found.')
+            return render_template('change_password.html')
+        
+        # Check current password
+        if not check_password_hash(user.password, current_password):
+            flash('Current password is incorrect.')
+            return render_template('change_password.html')
+        
+        # Validate new password
+        is_valid, message = validate_password(new_password)
+        if not is_valid:
+            flash(message)
+            return render_template('change_password.html')
+        
+        # Check if new password and confirmation match
+        if new_password != confirm_password:
+            flash('New password and confirmation do not match.')
+            return render_template('change_password.html')
+        
+        # Update password
+        user.password = generate_password_hash(new_password)
+        db.session.commit()
+        
+        flash('Password changed successfully.')
+        return redirect(url_for('main.dashboard'))
+    
+    return render_template('change_password.html')

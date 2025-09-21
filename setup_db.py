@@ -1,9 +1,23 @@
 import os
-from app import create_app
+import logging
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError
 from models import db, User
 from werkzeug.security import generate_password_hash
 import secrets
 import time
+
+def get_database_uri():
+    """Get database URI with proper SSL configuration"""
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url:
+        # Handle Render's database URL which might not have all SSL parameters
+        if 'postgresql://' in database_url and '?' not in database_url:
+            database_url += '?sslmode=require'
+        return database_url
+    else:
+        # Default to localhost for development
+        return 'postgresql://sittminthar@localhost:5432/dental_scheduler'
 
 def generate_secure_password(length=12):
     """Generate a secure random password"""
@@ -89,73 +103,141 @@ def create_indexes():
         raise e
 
 def init_db(app=None):
-    """Initialize the database with all required tables, indexes, and default users"""
-    # Use the passed app or create a new one
-    app_to_use = app or create_app('production')
+    """Initialize the database with proper connection handling"""
+    start_time = time.time()
     
-    with app_to_use.app_context():
-        start_time = time.time()
-        try:
-            database_uri = app_to_use.config.get('SQLALCHEMY_DATABASE_URI', 'not set')
-            app_to_use.logger.info(f"Database URI being used: {database_uri}")
-            
-            # Check if we're using the default localhost URI
-            if 'localhost' in database_uri or '127.0.0.1' in database_uri:
-                app_to_use.logger.warning("WARNING: Using localhost database URI. This will not work in production!")
-                app_to_use.logger.warning("Make sure DATABASE_URL environment variable is set in Render.")
-            
-            # Create all tables
+    try:
+        if app:
+            # Use the app's database configuration
+            database_uri = app.config['SQLALCHEMY_DATABASE_URI']
+            engine_options = app.config.get('SQLALCHEMY_ENGINE_OPTIONS', {})
+        else:
+            # Use direct configuration
+            database_uri = get_database_uri()
+            engine_options = {
+                'pool_pre_ping': True,
+                'pool_recycle': 300,
+                'pool_timeout': 20
+            }
+        
+        # Log the database URI being used (without credentials)
+        safe_uri = database_uri.split('@')[-1] if '@' in database_uri else database_uri
+        logging.info(f"Database URI being used: {safe_uri}")
+        
+        if 'localhost' in database_uri or '127.0.0.1' in database_uri:
+            logging.warning("WARNING: Using localhost database URI. This will not work in production!")
+            logging.warning("Make sure DATABASE_URL environment variable is set in Render.")
+        
+        # Create engine with connection options
+        engine = create_engine(database_uri, **engine_options)
+        
+        # Test the connection
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1"))
+            result.fetchone()
+        
+        # Initialize tables
+        if app:
+            from app import create_app
+            app_to_use = app or create_app('production')
+            with app_to_use.app_context():
+                db.create_all()
+                logging.info("Database tables created")
+                
+                # Check and update user table structure
+                update_user_table()
+                logging.info("User table structure updated")
+                
+                # Check and update patient table structure
+                update_patient_table()
+                logging.info("Patient table structure updated")
+                
+                # Create indexes
+                create_indexes()
+                logging.info("Database indexes created")
+        else:
+            # For standalone usage
             db.create_all()
-            app_to_use.logger.info("Database tables created")
+            logging.info("Database tables created")
             
-            # Update user table structure
+            # Check and update user table structure
             update_user_table()
-            app_to_use.logger.info("User table structure updated")
+            logging.info("User table structure updated")
             
-            # Update patient table structure
+            # Check and update patient table structure
             update_patient_table()
-            app_to_use.logger.info("Patient table structure updated")
+            logging.info("Patient table structure updated")
             
-            # Create indexes for better performance
+            # Create indexes
             create_indexes()
-            app_to_use.logger.info("Database indexes created")
+            logging.info("Database indexes created")
             
-            # Create default users if they don't exist
-            supervisor = User.query.filter_by(username='supervisor').first()
-            if not supervisor:
-                supervisor_password = os.environ.get('SUPERVISOR_PASSWORD') or generate_secure_password()
-                supervisor = User(
-                    username='supervisor',
-                    password=generate_password_hash(supervisor_password),
-                    role='supervisor'
-                )
-                db.session.add(supervisor)
-                app_to_use.logger.info(f"Created supervisor user")
+        # Create default users if they don't exist
+        supervisor = User.query.filter_by(username='supervisor').first()
+        if not supervisor:
+            supervisor_password = os.environ.get('SUPERVISOR_PASSWORD') or generate_secure_password()
+            supervisor = User(
+                username='supervisor',
+                password=generate_password_hash(supervisor_password),
+                role='supervisor'
+            )
+            db.session.add(supervisor)
+            logging.info(f"Created supervisor user")
+        
+        pi = User.query.filter_by(username='pi').first()
+        if not pi:
+            pi_password = os.environ.get('PI_PASSWORD') or generate_secure_password()
+            pi = User(
+                username='pi',
+                password=generate_password_hash(pi_password),
+                role='pi'
+            )
+            db.session.add(pi)
+            logging.info(f"Created PI user")
+        
+        db.session.commit()
+        
+        elapsed_time = time.time() - start_time
+        logging.info(f"Database initialized successfully in {elapsed_time:.2f} seconds")
+        return True
+        
+    except OperationalError as e:
+        if "SSL error" in str(e):
+            logging.error("SSL connection error. Trying to reconnect with different SSL settings...")
+            # Try with different SSL mode
+            if '?' in database_uri:
+                alt_uri = database_uri.split('?')[0] + '?sslmode=prefer'
+            else:
+                alt_uri = database_uri + '?sslmode=prefer'
             
-            pi = User.query.filter_by(username='pi').first()
-            if not pi:
-                pi_password = os.environ.get('PI_PASSWORD') or generate_secure_password()
-                pi = User(
-                    username='pi',
-                    password=generate_password_hash(pi_password),
-                    role='pi'
-                )
-                db.session.add(pi)
-                app_to_use.logger.info(f"Created PI user")
-            
-            db.session.commit()
-            elapsed_time = time.time() - start_time
-            app_to_use.logger.info(f"Database initialized successfully in {elapsed_time:.2f} seconds")
-            return True
-            
-        except Exception as e:
-            db.session.rollback()
-            elapsed_time = time.time() - start_time
-            app_to_use.logger.error(f"Database initialization failed after {elapsed_time:.2f} seconds: {str(e)}", exc_info=True)
-            # Don't re-raise as a generic error, let the original error propagate
-            raise e
+            try:
+                engine = create_engine(alt_uri, **engine_options)
+                with engine.connect() as conn:
+                    result = conn.execute(text("SELECT 1"))
+                    result.fetchone()
+                logging.info("Successfully connected with alternative SSL settings")
+                return True
+            except Exception as alt_e:
+                logging.error(f"Alternative connection also failed: {alt_e}")
+                return False
+        else:
+            logging.error(f"Database connection failed: {e}")
+            return False
+    except Exception as e:
+        logging.error(f"Unexpected error during database initialization: {e}")
+        return False
 
 if __name__ == '__main__':
-    app = create_app('production')
-    init_db(app)
-    print("Database initialized successfully!")
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+    )
+    
+    # Initialize database
+    success = init_db()
+    if success:
+        print("Database initialized successfully!")
+    else:
+        print("Database initialization failed!")
+        sys.exit(1)

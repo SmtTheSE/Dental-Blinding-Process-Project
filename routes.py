@@ -1003,9 +1003,27 @@ def export_patients():
     batch_size = 100
     has_more = True
     
+    # Retry logic for database operations
+    max_retries = 3
+    retry_delay = 1  # seconds
+    
     while has_more:
         # Order patients by patient_id numerically to ensure sequential order in export
-        patients = Patient.query.order_by(cast(Patient.patient_id, db.Integer)).offset(offset).limit(batch_size).all()
+        patients = None
+        for attempt in range(max_retries):
+            try:
+                patients = Patient.query.order_by(cast(Patient.patient_id, db.Integer)).offset(offset).limit(batch_size).all()
+                break  # Success, exit retry loop
+            except Exception as e:
+                if "SSL error" in str(e) and attempt < max_retries - 1:
+                    # SSL error, wait and retry
+                    import time
+                    time.sleep(retry_delay * (2 ** attempt))  # Exponential backoff
+                    continue
+                else:
+                    # Re-raise the exception if it's not an SSL error or we've exhausted retries
+                    raise
+        
         if not patients:
             has_more = False
             continue
@@ -1032,7 +1050,7 @@ def export_patients():
                         # Download the image from the URL directly into memory
                         import urllib.request
                         # Download image data
-                        with urllib.request.urlopen(patient.opg_link) as response:
+                        with urllib.request.urlopen(patient.opg_link, timeout=30) as response:
                             image_data = BytesIO(response.read())
                             # Load and resize image
                             img = ExcelImage(image_data)

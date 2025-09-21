@@ -20,7 +20,6 @@ def generate_secure_password(length=12):
 
 def update_user_table():
     """Add new columns to existing user table if they don't exist"""
-    start_time = time.time()
     logger.info("Starting user table update")
     
     try:
@@ -37,8 +36,7 @@ def update_user_table():
         
         if not result.fetchone():
             # Add failed_attempts column
-            alter_table_sql = text("ALTER TABLE \"user\" ADD COLUMN failed_attempts INTEGER DEFAULT 0")
-            db.session.execute(alter_table_sql)
+            db.session.execute(text("ALTER TABLE \"user\" ADD COLUMN failed_attempts INTEGER DEFAULT 0"))
             logger.info("Added failed_attempts column to user table")
         
         # Check if last_login column exists
@@ -50,20 +48,18 @@ def update_user_table():
         
         if not result.fetchone():
             # Add last_login column
-            alter_table_sql = text("ALTER TABLE \"user\" ADD COLUMN last_login TIMESTAMP")
-            db.session.execute(alter_table_sql)
+            db.session.execute(text("ALTER TABLE \"user\" ADD COLUMN last_login TIMESTAMP"))
             logger.info("Added last_login column to user table")
             
         db.session.commit()
-        logger.info(f"Successfully completed user table update in {time.time() - start_time:.2f} seconds")
+        logger.info("User table structure updated successfully")
     except Exception as e:
         logger.error(f"Error updating user table: {str(e)}", exc_info=True)
         db.session.rollback()
-        raise type(e)(f"Database operation failed during user table update: {str(e)}") from e
+        raise RuntimeError("Database operation failed during user table update") from e
 
 def create_indexes():
     """Create database indexes for better performance"""
-    start_time = time.time()
     logger.info("Starting index creation")
     
     try:
@@ -72,60 +68,50 @@ def create_indexes():
         from sqlalchemy import text
         
         # Index on patient_id for faster lookups
-        index_sql = text("CREATE INDEX IF NOT EXISTS idx_patient_patient_id ON patient (patient_id)")
-        db.session.execute(index_sql)
+        db.session.execute(text("CREATE INDEX IF NOT EXISTS idx_patient_patient_id ON patient (patient_id)"))
         logger.info("Created index on patient.patient_id")
         
         # Index on code_a and code_b for faster blinded data queries
-        index_sql = text("CREATE INDEX IF NOT EXISTS idx_patient_code_a ON patient (code_a)")
-        db.session.execute(index_sql)
+        db.session.execute(text("CREATE INDEX IF NOT EXISTS idx_patient_code_a ON patient (code_a)"))
         logger.info("Created index on patient.code_a")
         
-        index_sql = text("CREATE INDEX IF NOT EXISTS idx_patient_code_b ON patient (code_b)")
-        db.session.execute(index_sql)
+        db.session.execute(text("CREATE INDEX IF NOT EXISTS idx_patient_code_b ON patient (code_b)"))
         logger.info("Created index on patient.code_b")
         
         # Index on estimation entry codes
-        index_sql = text("CREATE INDEX IF NOT EXISTS idx_estimation_entry_code ON estimation_entry (code)")
-        db.session.execute(index_sql)
+        db.session.execute(text("CREATE INDEX IF NOT EXISTS idx_estimation_entry_code ON estimation_entry (code)"))
         logger.info("Created index on estimation_entry.code")
         
         db.session.commit()
-        logger.info(f"Successfully completed index creation in {time.time() - start_time:.2f} seconds")
+        logger.info("Database indexes created successfully")
     except Exception as e:
         logger.error(f"Error creating indexes: {str(e)}", exc_info=True)
         db.session.rollback()
-        raise type(e)(f"Database operation failed during index creation: {str(e)}") from e
+        raise RuntimeError("Database operation failed during index creation") from e
 
 def init_db(app=None):
     """Initialize the database with all required tables, indexes, and default users"""
-    start_time = time.time()
     logger.info("Starting database initialization")
     
     # Use the passed app or create a new one
     app_to_use = app or create_app('production')
     
     with app_to_use.app_context():
+        start_time = time.time()
         try:
             app_to_use.logger.info(f"Database URI being used: {app_to_use.config.get('SQLALCHEMY_DATABASE_URI')}")
             
             # Create all tables
             db.create_all()
-            creation_time = time.time()
-            logger.info(f"Database tables created in {creation_time - start_time:.2f} seconds")
+            app_to_use.logger.info("Database tables created")
             
             # Update user table structure
             update_user_table()
-            update_time = time.time()
-            logger.info(f"User table structure updated in {update_time - creation_time:.2f} seconds")
             
             # Create indexes for better performance
             create_indexes()
-            indexes_time = time.time()
-            logger.info(f"Database indexes created in {indexes_time - update_time:.2f} seconds")
             
             # Create default users if they don't exist
-            users_start = time.time()
             supervisor = User.query.filter_by(username='supervisor').first()
             if not supervisor:
                 supervisor_password = os.environ.get('SUPERVISOR_PASSWORD') or generate_secure_password()
@@ -135,7 +121,7 @@ def init_db(app=None):
                     role='supervisor'
                 )
                 db.session.add(supervisor)
-                logger.info(f"Created supervisor user with password: {supervisor_password}")
+                app_to_use.logger.info(f"Created supervisor user")
             
             pi = User.query.filter_by(username='pi').first()
             if not pi:
@@ -146,21 +132,18 @@ def init_db(app=None):
                     role='pi'
                 )
                 db.session.add(pi)
-                logger.info(f"Created PI user with password: {pi_password}")
+                app_to_use.logger.info(f"Created PI user")
             
             db.session.commit()
-            users_time = time.time()
-            logger.info(f"Default users created successfully in {users_time - users_start:.2f} seconds")
-            
-            total_time = time.time() - start_time
-            logger.info(f"Database initialization completed successfully in {total_time:.2f} seconds")
+            elapsed_time = time.time() - start_time
+            app_to_use.logger.info(f"Database initialized successfully in {elapsed_time:.2f} seconds")
             return True
             
         except Exception as e:
             db.session.rollback()
-            logger.error(f"Error initializing database: {str(e)}", exc_info=True)
-            logger.error(f"Database initialization failed after {time.time() - start_time:.2f} seconds")
-            raise type(e)(f"Database initialization failed: {str(e)}") from e
+            elapsed_time = time.time() - start_time
+            app_to_use.logger.error(f"Database initialization failed after {elapsed_time:.2f} seconds", exc_info=True)
+            raise RuntimeError("Database initialization failed") from e
 if __name__ == '__main__':
     app = create_app('production')
     init_db(app)

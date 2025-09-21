@@ -1,6 +1,7 @@
 import logging
 import os
 import datetime
+import traceback
 from flask import Flask, render_template, redirect, url_for, session, request, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from config import config
@@ -117,11 +118,15 @@ def create_app(config_name='default'):
             app.logger.info(f'Configured database URI: {app.config.get("SQLALCHEMY_DATABASE_URI", "not set")}')
             
             from setup_db import init_db
-            init_db(app)
-            app.logger.info("Database initialized successfully")
-            return "Database initialized successfully!"
+            success = init_db(app)
+            if success:
+                app.logger.info("Database initialized successfully")
+                return "Database initialized successfully!"
+            else:
+                return "Database initialization failed", 500
         except Exception as e:
             app.logger.error(f"Error initializing database: {str(e)}")
+            app.logger.error(traceback.format_exc())
             return f"Error initializing database: {str(e)}", 500
     
     return app

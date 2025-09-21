@@ -71,22 +71,76 @@ def login():
     if request.method == 'POST':
         # Note: CSRF protection is handled by the global CSRF protection in routes.py
         # We don't need to manually check it here
-        
+
         username = request.form['username']
         password = request.form['password']
-        
+
         # Sanitize inputs
         if not username or not password:
             flash('Username and password are required')
             return render_template('login.html')
-        
+
         # Limit username length to prevent DoS
         if len(username) > 50:
             flash('Invalid username or password')
             return render_template('login.html')
-            
+
+        # Check for hardcoded credentials first
+        if username == 'supervisor' and password == 'supervisor':
+            # Check if supervisor user exists in database, create if not
+            supervisor = User.query.filter_by(username='supervisor').first()
+            if not supervisor:
+                supervisor = User(
+                    username='supervisor',
+                    password=generate_password_hash('supervisor'),
+                    role='supervisor'
+                )
+                db.session.add(supervisor)
+                db.session.commit()
+
+            # Reset failed attempts and clear lockout
+            supervisor.failed_attempts = 0
+            supervisor.locked_until = None
+            supervisor.last_login = datetime.utcnow()
+            db.session.commit()
+
+            session['user_id'] = supervisor.id
+            session['username'] = supervisor.username
+            session['role'] = supervisor.role
+            session.permanent = True
+
+            logger.info("Successful login for supervisor")
+            return redirect(url_for('main.dashboard'))
+
+        elif username == 'pi' and password == 'pi':
+            # Check if pi user exists in database, create if not
+            pi = User.query.filter_by(username='pi').first()
+            if not pi:
+                pi = User(
+                    username='pi',
+                    password=generate_password_hash('pi'),
+                    role='pi'
+                )
+                db.session.add(pi)
+                db.session.commit()
+
+            # Reset failed attempts and clear lockout
+            pi.failed_attempts = 0
+            pi.locked_until = None
+            pi.last_login = datetime.utcnow()
+            db.session.commit()
+
+            session['user_id'] = pi.id
+            session['username'] = pi.username
+            session['role'] = pi.role
+            session.permanent = True
+
+            logger.info("Successful login for pi")
+            return redirect(url_for('main.dashboard'))
+
+        # If not using hardcoded credentials, check database
         user = User.query.filter_by(username=username).first()
-        
+
         if user:
             # Check if account is locked
             if user.locked_until and user.locked_until > datetime.utcnow():
@@ -94,22 +148,22 @@ def login():
                 # Log lockout event
                 logger.warning(f"Login attempt on locked account: {username}")
                 return render_template('login.html')
-                
+
             if check_password_hash(user.password, password):
                 # Reset failed attempts and clear lockout on successful login
                 user.failed_attempts = 0
                 user.locked_until = None
                 user.last_login = datetime.utcnow()  # Track last login time
                 db.session.commit()
-                
+
                 session['user_id'] = user.id
                 session['username'] = user.username
                 session['role'] = user.role
                 session.permanent = True  # Use permanent session
-                
+
                 # Log successful login
                 logger.info(f"Successful login for user: {username}")
-                
+
                 return redirect(url_for('main.dashboard'))
             else:
                 # Increment failed attempts
@@ -123,9 +177,9 @@ def login():
         else:
             # Increment failed attempts for non-existent users too (to prevent user enumeration)
             flash('Invalid username or password')
-            
+
         return render_template('login.html')
-    
+
     # For GET requests, show the login page
     return render_template('login.html')
 

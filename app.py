@@ -101,6 +101,26 @@ def create_app(config_name='default'):
             'generated_token': token,
             'tokens_match': session.get('csrf_token') == token
         }
+        
+    @app.route('/view-users')
+    def view_users():
+        """Temporary route to view user information"""
+        # Only allow this in development or with explicit environment variable
+        if os.environ.get('FLASK_ENV') != 'development' and not os.environ.get('ALLOW_PASSWORD_RESET'):
+            return redirect(url_for('auth.login'))
+        
+        from models import User
+        users = User.query.all()
+        users_info = []
+        for user in users:
+            users_info.append({
+                'id': user.id,
+                'username': user.username,
+                'role': user.role,
+                'password_hash': user.password
+            })
+        
+        return {'users': users_info}
     
     @app.route('/', methods=['GET', 'POST'])
     def index():

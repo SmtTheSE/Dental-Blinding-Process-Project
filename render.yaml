@@ -15,7 +15,7 @@ services:
           name: dental-db
           property: connectionString
       - key: PYTHONPATH
-        value: /opt/render/project/src/.pythonlibs/lib/python3.11/site-packages
+        value: /opt/render/project/src/.pythonlibs/lib/python3.12/site-packages
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_KEY

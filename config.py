@@ -6,7 +6,12 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
     
     # Database configuration - support both local and Render PostgreSQL
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'postgresql://sittminthar@localhost:5432/dental_scheduler'
+    # Handle both postgres:// and postgresql:// prefixes
+    database_url = os.environ.get('DATABASE_URL') or 'postgresql://sittminthar@localhost:5432/dental_scheduler'
+    if database_url and database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    
+    SQLALCHEMY_DATABASE_URI = database_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Security settings

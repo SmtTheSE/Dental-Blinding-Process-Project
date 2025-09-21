@@ -108,9 +108,14 @@ def create_app(config_name='default'):
     
     @app.route('/setup')
     def setup():
-        from setup_db import init_db
-        init_db(app)
-        return "Database initialized successfully!"
+        try:
+            from setup_db import init_db
+            init_db(app)
+            app.logger.info("Database initialized successfully")
+            return "Database initialized successfully!"
+        except Exception as e:
+            app.logger.error(f"Error initializing database: {str(e)}")
+            return f"Error initializing database: {str(e)}", 500
     
     return app
 

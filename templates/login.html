@@ -173,7 +173,10 @@
             
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
+                <div style="position: relative;">
+                    <input type="password" id="password" name="password" required>
+                    <button type="button" onclick="togglePassword('password')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer;">👁️</button>
+                </div>
             </div>
             
             <button type="submit" class="btn">Login</button>
@@ -183,5 +186,13 @@
             &copy; 2025 University Of Dental Medicine, Mandalay. All rights reserved.
         </footer>
     </div>
+    
+    <script>
+        function togglePassword(fieldId) {
+            const field = document.getElementById(fieldId);
+            const type = field.getAttribute('type') === 'password' ? 'text' : 'password';
+            field.setAttribute('type', type);
+        }
+    </script>
 </body>
 </html>

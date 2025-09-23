@@ -1,5 +1,6 @@
 class Config:
     PASSWORD_MIN_LENGTH = 12  # Minimum password length
+
 import logging
 import re
 import os
@@ -10,6 +11,9 @@ from flask import Blueprint, request, render_template, redirect, url_for, flash,
 from models import db, User
 from werkzeug.security import check_password_hash, generate_password_hash
 from config import Config
+
+# Password configuration
+PASSWORD_MIN_LENGTH = 12
 
 auth = Blueprint('auth', __name__)
 
@@ -29,8 +33,8 @@ LOCKOUT_TIME = 300  # 5 minutes in seconds
 
 def validate_password(password):
     """Validate password strength"""
-    if len(password) < Config.PASSWORD_MIN_LENGTH:
-        return False, f"Password must be at least {Config.PASSWORD_MIN_LENGTH} characters long"
+    if len(password) < PASSWORD_MIN_LENGTH:
+        return False, f"Password must be at least {PASSWORD_MIN_LENGTH} characters long"
     
     # Check for at least one uppercase letter, one lowercase letter, and one digit
     if not re.search(r"[A-Z]", password):
@@ -213,6 +217,7 @@ def change_password():
             return render_template('change_password.html')
         
         current_password = request.form.get('current_password')
+        new_username = request.form.get('new_username')
         new_password = request.form.get('new_password')
         confirm_password = request.form.get('confirm_password')
         
@@ -227,22 +232,57 @@ def change_password():
             flash('Current password is incorrect.')
             return render_template('change_password.html')
         
-        # Validate new password
-        is_valid, message = validate_password(new_password)
-        if not is_valid:
-            flash(message)
+        # Check if new username is provided and is different
+        username_changed = False
+        if new_username and new_username != user.username:
+            # Check if username already exists
+            existing_user = User.query.filter_by(username=new_username).first()
+            if existing_user:
+                flash('Username already exists. Please choose a different username.')
+                return render_template('change_password.html')
+            
+            # Update username
+            user.username = new_username
+            username_changed = True
+        
+        # Check if new password is provided
+        password_changed = False
+        if new_password:
+            # Validate new password
+            is_valid, message = validate_password(new_password)
+            if not is_valid:
+                flash(message)
+                return render_template('change_password.html')
+            
+            # Check if new password and confirmation match
+            if new_password != confirm_password:
+                flash('New password and confirmation do not match.')
+                return render_template('change_password.html')
+            
+            # Update password
+            user.password = generate_password_hash(new_password)
+            password_changed = True
+        
+        # If neither username nor password is being changed
+        if not username_changed and not password_changed:
+            flash('No changes were made.')
             return render_template('change_password.html')
         
-        # Check if new password and confirmation match
-        if new_password != confirm_password:
-            flash('New password and confirmation do not match.')
-            return render_template('change_password.html')
-        
-        # Update password
-        user.password = generate_password_hash(new_password)
+        # Commit changes to database
         db.session.commit()
         
-        flash('Password changed successfully.')
+        # Update session if username was changed
+        if username_changed:
+            session['username'] = user.username
+        
+        # Show appropriate success message
+        if username_changed and password_changed:
+            flash('Username and password changed successfully.')
+        elif username_changed:
+            flash('Username changed successfully.')
+        elif password_changed:
+            flash('Password changed successfully.')
+            
         return redirect(url_for('main.dashboard'))
     
     return render_template('change_password.html')

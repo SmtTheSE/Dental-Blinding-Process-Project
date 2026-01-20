@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Supervisor Dashboard - Dental Age Estimation System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Supervisor Dashboard</h2>
+    <p>Welcome, {{ session.username }}. You have full access to manage the dental age estimation process.</p>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.3s ease, box-shadow 0.3s ease; display: flex; flex-direction: column;">
+            <h3>Patient Management</h3>
+            <p>Add and manage patient records with actual ages and sex information.</p>
+            <div style="margin-top: auto;">
+                <a href="/patients" class="btn">Manage Patients</a>
+            </div>
+        </div>
+        
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.3s ease, box-shadow 0.3s ease; display: flex; flex-direction: column;">
+            <h3>Code Assignment</h3>
+            <p>Assign randomized codes to patients for the blinding process.</p>
+            <div style="margin-top: auto;">
+                <a href="/assign_codes" class="btn">Assign Codes</a>
+            </div>
+        </div>
+        
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.3s ease, box-shadow 0.3s ease; display: flex; flex-direction: column;">
+            <h3>Blinded Data</h3>
+            <p>View and export blinded data for the Principal Investigator.</p>
+            <div style="margin-top: auto;">
+                <a href="/blinded_data" class="btn">View Blinded Data</a>
+            </div>
+        </div>
+        
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.3s ease, box-shadow 0.3s ease; display: flex; flex-direction: column;">
+            <h3>Analysis</h3>
+            <p>Compare estimated ages with actual ages and analyze method accuracy.</p>
+            <div style="margin-top: auto;">
+                <a href="/analysis" class="btn">View Analysis</a>
+            </div>
+        </div>
+        
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.3s ease, box-shadow 0.3s ease; display: flex; flex-direction: column;">
+            <h3>Account Settings</h3>
+            <p>Change your username, password and manage account settings.</p>
+            <div style="margin-top: auto;">
+                <a href="/change_password" class="btn">Change Credentials</a>
+            </div>
+        </div>
+    </div>
+    
+    <div style="margin-top: 2rem; padding: 1.5rem; background-color: #e3f2fd; border-radius: 8px;">
+        <h3>Blinding Workflow Status</h3>
+        <p>The blinding workflow ensures scientific rigor by preventing the Principal Investigator from accessing actual patient information or knowing which method is being used for each case.</p>
+        <ul>
+            <li>Patient data is stored in the Master Sheet (only accessible to supervisors)</li>
+            <li>Randomized codes are assigned to each patient for both methods</li>
+            <li>Data is shuffled and blinded before sharing with the PI</li>
+            <li>PI performs age estimation using only codes and OPG images</li>
+            <li>Supervisor unblinds data and performs final analysis</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

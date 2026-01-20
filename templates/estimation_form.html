@@ -1,0 +1,40 @@
+<form id="estimation-form" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="code" value="{{ code }}">
+    <input type="hidden" name="method" value="{{ method.lower() }}">
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+        <div>
+            <h4>Patient Information</h4>
+            <p><strong>Code:</strong> {{ code }}</p>
+            <p><strong>Method:</strong> {{ method }}</p>
+            <p><strong>Sex:</strong> {{ sex }}</p>
+            
+            {% if opg %}
+            <div>
+                <h4>OPG Image</h4>
+                <img src="{{ opg }}" alt="OPG Image" style="max-width: 100%; border-radius: var(--border-radius);">
+            </div>
+            {% endif %}
+        </div>
+        
+        <div>
+            <h4>Age Estimation</h4>
+            <div class="form-group">
+                <label for="estimated_age">Estimated Age (years):</label>
+                <input type="number" step="0.1" id="estimated_age" name="estimated_age" required>
+            </div>
+        </div>
+    </div>
+    
+    <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+        <button type="submit" class="btn">Submit Estimation</button>
+        <button type="button" class="btn btn-secondary" id="cancel-estimation">Cancel</button>
+    </div>
+</form>
+
+<script>
+    document.getElementById('cancel-estimation').addEventListener('click', function() {
+        document.getElementById('estimation-modal').style.display = 'none';
+    });
+</script>

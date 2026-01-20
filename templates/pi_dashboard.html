@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}PI Dashboard - Dental Age Estimation System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Principal Investigator Dashboard</h2>
+    <p>Welcome, {{ session.username }}. You can perform dental age estimations on blinded data.</p>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.3s ease, box-shadow 0.3s ease; display: flex; flex-direction: column;">
+            <h3>Dental Age Estimation</h3>
+            <p>Perform age estimations using either the AlQahtani or Demirjian method.</p>
+            <p>You will only see codes, OPG images, and sex information.</p>
+            <div style="margin-top: auto;">
+                <a href="/estimate_age" class="btn">Estimate Age</a>
+            </div>
+        </div>
+        
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.3s ease, box-shadow 0.3s ease; display: flex; flex-direction: column;">
+            <h3>Account Settings</h3>
+            <p>Change your username, password and manage account settings.</p>
+            <div style="margin-top: auto;">
+                <a href="/change_password" class="btn">Change Credentials</a>
+            </div>
+        </div>
+    </div>
+    
+    <div style="margin-top: 2rem; padding: 1.5rem; background-color: #e8f5e9; border-radius: 8px;">
+        <h3>Blinded Data Access</h3>
+        <p>As a Principal Investigator, you have access only to blinded data:</p>
+        <ul>
+            <li>Randomized codes (not patient identifiers)</li>
+            <li>OPG images</li>
+            <li>Sex information</li>
+        </ul>
+        <p>You will <strong>not</strong> see:</p>
+        <ul>
+            <li>Patient names or IDs</li>
+            <li>Actual ages</li>
+            <li>Which method (AlQahtani or Demirjian) is being used for each case</li>
+        </ul>
+        <p>This blinding ensures unbiased age estimations and scientific rigor.</p>
+    </div>
+</div>
+{% endblock %}

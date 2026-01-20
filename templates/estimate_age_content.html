@@ -1,0 +1,180 @@
+<!-- Search Form -->
+<form method="GET" action="/estimate_age">
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <input 
+            type="text" 
+            name="search" 
+            placeholder="Search by Code..." 
+            value="{{ search_query or '' }}"
+            style="flex: 1; min-width: 200px;"
+        >
+        <button type="submit" class="btn">Search</button>
+        {% if search_query %}
+        <a href="/estimate_age" class="btn btn-secondary">Clear</a>
+        {% endif %}
+    </div>
+</form>
+
+<div class="search-loading">
+    <p>Searching...</p>
+</div>
+
+<div id="search-results-container">
+    {% if search_query %}
+    <div class="search-results-info">
+        Search results for: <strong>"{{ search_query }}"</strong> ({{ patients.total }} entr{{ patients.total != 1 and 'ies' or 'y' }})
+    </div>
+    {% endif %}
+
+    {% if entries %}
+    <table>
+        <tr>
+            <th>Code</th>
+            <th>Method</th>
+            <th>OPG Image</th>
+            <th>Sex</th>
+            <th>Actions</th>
+        </tr>
+        {% for entry in entries %}
+        <tr>
+            <td>{{ entry.code }}</td>
+            <td>{{ entry.method }}</td>
+            <td>
+                {% if entry.opg_link %}
+                <img src="{{ entry.opg_link }}" alt="OPG Image" style="max-width: 100px; max-height: 100px; border-radius: 4px;">
+                {% else %}
+                No image
+                {% endif %}
+            </td>
+            <td>{{ entry.sex }}</td>
+            <td>
+                <button class="btn estimate-btn" 
+                        data-code="{{ entry.code }}" 
+                        data-method="{{ entry.method }}"
+                        data-opg="{{ entry.opg_link or '' }}"
+                        data-sex="{{ entry.sex }}">
+                    Estimate Age
+                </button>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <!-- Pagination Controls -->
+    {% if patients.pages > 1 %}
+    <div class="pagination">
+        <!-- Previous button -->
+        {% if patients.has_prev %}
+            <a href="{{ url_for('main.estimate_age', page=patients.prev_num, search=search_query) }}" class="btn btn-secondary">&laquo; Previous</a>
+        {% else %}
+            <span class="btn btn-secondary disabled">&laquo; Previous</span>
+        {% endif %}
+        
+        <!-- Page numbers -->
+        {% for page_num in patients.iter_pages() %}
+            {% if page_num %}
+                {% if page_num != patients.page %}
+                    <a href="{{ url_for('main.estimate_age', page=page_num, search=search_query) }}" class="btn btn-secondary">{{ page_num }}</a>
+                {% else %}
+                    <span class="btn active">{{ page_num }}</span>
+                {% endif %}
+            {% else %}
+                <span class="ellipsis">…</span>
+            {% endif %}
+        {% endfor %}
+        
+        <!-- Next button -->
+        {% if patients.has_next %}
+            <a href="{{ url_for('main.estimate_age', page=patients.next_num, search=search_query) }}" class="btn btn-secondary">Next &raquo;</a>
+        {% else %}
+            <span class="btn btn-secondary disabled">Next &raquo;</span>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    {% else %}
+    <div style="background: white; padding: 2rem; text-align: center; border-radius: var(--border-radius); box-shadow: var(--box-shadow);">
+        <h3>No Blinded Data Available</h3>
+        <p>{% if search_query %}No entries match your search query: <strong>"{{ search_query }}"</strong>.{% else %}No blinded data has been generated yet. Please ask the supervisor to assign codes to patients.{% endif %}</p>
+        <div style="margin-top: 1rem;">
+            <a href="/" class="btn">Home</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Estimation Modal -->
+<div id="estimation-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000;">
+    <div style="background: white; margin: 5% auto; padding: 2rem; border-radius: var(--border-radius); max-width: 800px; position: relative;">
+        <span id="close-modal" style="position: absolute; top: 1rem; right: 1rem; font-size: 1.5rem; cursor: pointer;">&times;</span>
+        <h3>Estimate Age</h3>
+        <div id="estimation-content">
+            <!-- Content will be loaded dynamically -->
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle estimate button clicks
+        document.querySelectorAll('.estimate-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const code = this.getAttribute('data-code');
+                const method = this.getAttribute('data-method');
+                const opg = this.getAttribute('data-opg');
+                const sex = this.getAttribute('data-sex');
+                
+                // Show modal with estimation form
+                fetch(`/get_estimation_form?code=${encodeURIComponent(code)}&method=${encodeURIComponent(method)}&opg=${encodeURIComponent(opg)}&sex=${encodeURIComponent(sex)}`)
+                    .then(response => response.text())
+                    .then(html => {
+                        document.getElementById('estimation-content').innerHTML = html;
+                        document.getElementById('estimation-modal').style.display = 'block';
+                        
+                        // Handle form submission
+                        const form = document.getElementById('estimation-form');
+                        if (form) {
+                            form.addEventListener('submit', function(e) {
+                                e.preventDefault();
+                                
+                                const formData = new FormData(this);
+                                
+                                fetch('/estimate_age', {
+                                    method: 'POST',
+                                    body: formData
+                                })
+                                .then(response => response.text())
+                                .then(html => {
+                                    // Close modal and reload the page to show updated data
+                                    document.getElementById('estimation-modal').style.display = 'none';
+                                    location.reload();
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    // Close modal and reload even if there's an error
+                                    document.getElementById('estimation-modal').style.display = 'none';
+                                    location.reload();
+                                });
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+            });
+        });
+        
+        // Handle modal close
+        document.getElementById('close-modal').addEventListener('click', function() {
+            document.getElementById('estimation-modal').style.display = 'none';
+        });
+        
+        // Close modal when clicking outside
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('estimation-modal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    });
+</script>

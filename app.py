@@ -145,8 +145,15 @@ def create_app(config_name='default'):
         
         return {'users': users_info}
     
-    @app.route('/', methods=['GET', 'POST'])
+    @app.route('/')
     def index():
+        if 'user_id' in session:
+            return redirect(url_for('main.dashboard'))
+        # Show landing page for non-authenticated users
+        return render_template('landing.html')
+    
+    @app.route('/login', methods=['GET', 'POST'])
+    def login_page():
         if request.method == 'POST':
             # Handle login
             from auth import login

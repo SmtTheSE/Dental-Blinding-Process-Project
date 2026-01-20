@@ -1,198 +1,301 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Dental Age Estimation System</title>
+    <title>Sign In - Dental Age Estimation System</title>
     <style>
-        :root {
-            --primary-color: #2563eb;
-            --primary-dark: #1d4ed8;
-            --secondary-color: #64748b;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --danger-color: #ef4444;
-            --light-color: #f8fafc;
-            --dark-color: #0f172a;
-            --border-radius: 8px;
-            --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --box-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-
         * {
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
         }
 
+        :root {
+            --apple-blue: #0071e3;
+            --apple-dark: #1d1d1f;
+            --apple-gray: #86868b;
+            --apple-light: #f5f5f7;
+        }
+
         body {
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
-            line-height: 1.6;
-            color: #334155;
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-            background-attachment: fixed;
-            margin: 0;
-            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ed 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 20px;
         }
 
         .login-container {
-            background-color: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow-lg);
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-radius: 18px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
             width: 100%;
-            max-width: 400px;
-            padding: 2rem;
+            max-width: 440px;
+            padding: 48px 40px;
         }
 
-        .logo {
+        .logo-section {
             text-align: center;
-            margin-bottom: 2rem;
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--dark-color);
+            margin-bottom: 32px;
         }
 
-        .logo span {
-            color: var(--primary-color);
+        .logo-section img {
+            height: 64px;
+            width: auto;
+            margin-bottom: 16px;
         }
 
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
+        .logo-section h1 {
+            font-size: 32px;
             font-weight: 600;
-            color: var(--dark-color);
+            letter-spacing: -0.005em;
+            color: var(--apple-dark);
+            margin-bottom: 8px;
         }
 
-        .form-group input {
-            width: 100%;
-            padding: 0.75rem;
-            border: 2px solid #e2e8f0;
-            border-radius: var(--border-radius);
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            font-family: inherit;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
-        }
-
-        .btn {
-            display: block;
-            width: 100%;
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-            color: white;
-            padding: 0.75rem;
-            border: none;
-            border-radius: var(--border-radius);
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--box-shadow);
-        }
-
-        .btn:active {
-            transform: translateY(0);
+        .logo-section p {
+            font-size: 17px;
+            color: var(--apple-gray);
+            letter-spacing: -0.022em;
         }
 
         .flash-messages {
-            margin-bottom: 1.5rem;
+            margin-bottom: 24px;
         }
 
         .flash-message {
-            padding: 0.75rem;
-            border-radius: var(--border-radius);
-            margin-bottom: 0.5rem;
-            background-color: #fee2e2;
-            color: #991b1b;
-            border: 1px solid #fecaca;
-        }
-
-        .flash-message:last-child {
-            margin-bottom: 0;
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            font-size: 14px;
+            line-height: 1.42857;
+            background: #fee;
+            color: #c41e3a;
+            border: 1px solid #fcc;
         }
 
         .flash-message.success {
-            background-color: #d1fae5;
+            background: #d1fae5;
             color: #065f46;
             border: 1px solid #a7f3d0;
         }
 
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--apple-dark);
+            letter-spacing: -0.016em;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #d2d2d7;
+            border-radius: 12px;
+            font-size: 17px;
+            font-family: inherit;
+            color: var(--apple-dark);
+            background: white;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--apple-blue);
+            box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
+        }
+
+        .form-group input::placeholder {
+            color: var(--apple-gray);
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 20px;
+            opacity: 0.6;
+            transition: opacity 0.3s;
+        }
+
+        .toggle-password:hover {
+            opacity: 1;
+        }
+
+        .btn-submit {
+            width: 100%;
+            background: var(--apple-blue);
+            color: white;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 17px;
+            font-weight: 500;
+            letter-spacing: -0.022em;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 8px;
+        }
+
+        .btn-submit:hover {
+            background: #0077ed;
+            transform: translateY(-1px);
+            box-shadow: 0 10px 20px rgba(0, 113, 227, 0.2);
+        }
+
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 24px;
+        }
+
+        .back-link a {
+            color: var(--apple-blue);
+            text-decoration: none;
+            font-size: 14px;
+            transition: opacity 0.3s;
+        }
+
+        .back-link a:hover {
+            opacity: 0.7;
+        }
+
         footer {
             text-align: center;
-            margin-top: 1.5rem;
-            color: var(--secondary-color);
-            font-size: 0.875rem;
+            margin-top: 32px;
+            color: var(--apple-gray);
+            font-size: 12px;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-container {
+            animation: fadeInUp 0.6s ease-out;
         }
 
         @media (max-width: 480px) {
             .login-container {
-                margin: 1rem;
-                padding: 1.5rem;
+                padding: 32px 24px;
+            }
+
+            .logo-section h1 {
+                font-size: 28px;
             }
         }
     </style>
 </head>
+
 <body>
     <div class="login-container">
-        <div class="logo">
-            Dental Age <span>Estimation</span>
+        <div class="logo-section">
+            <img src="/static/img/UDMM.jpeg" alt="UDMM Logo">
+            <h1>Sign In</h1>
+            <p>Dental Age Estimation System</p>
         </div>
-        
+
         <div class="flash-messages">
             {% with messages = get_flashed_messages() %}
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="flash-message">{{ message }}</div>
-                    {% endfor %}
-                {% endif %}
+            {% if messages %}
+            {% for message in messages %}
+            <div class="flash-message">{{ message }}</div>
+            {% endfor %}
+            {% endif %}
             {% endwith %}
         </div>
-        
+
         <form method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            
+
             <div class="form-group">
                 <label for="username">Username</label>
-                <input type="text" id="username" name="username" required>
+                <input type="text" id="username" name="username" placeholder="Enter your username" required autofocus>
             </div>
-            
+
             <div class="form-group">
                 <label for="password">Password</label>
-                <div style="position: relative;">
-                    <input type="password" id="password" name="password" required>
-                    <button type="button" onclick="togglePassword('password')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer;">👁️</button>
+                <div class="input-wrapper">
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                    <button type="button" class="toggle-password" onclick="togglePassword()">
+                        👁️
+                    </button>
                 </div>
             </div>
-            
-            <button type="submit" class="btn">Login</button>
+
+            <button type="submit" class="btn-submit">Sign In</button>
         </form>
-        
+
+        <div class="back-link">
+            <a href="/">← Back to Home</a>
+        </div>
+
         <footer>
-            &copy; 2025 University Of Dental Medicine, Mandalay. All rights reserved.
+            © 2025 University Of Dental Medicine, Mandalay
         </footer>
     </div>
-    
+
     <script>
-        function togglePassword(fieldId) {
-            const field = document.getElementById(fieldId);
-            const type = field.getAttribute('type') === 'password' ? 'text' : 'password';
-            field.setAttribute('type', type);
+        function togglePassword() {
+            const field = document.getElementById('password');
+            const button = document.querySelector('.toggle-password');
+
+            if (field.type === 'password') {
+                field.type = 'text';
+                button.textContent = '🙈';
+            } else {
+                field.type = 'password';
+                button.textContent = '👁️';
+            }
         }
+
+        // Auto-dismiss flash messages
+        document.addEventListener('DOMContentLoaded', function () {
+            const flashMessages = document.querySelectorAll('.flash-message');
+            flashMessages.forEach(function (message) {
+                setTimeout(function () {
+                    message.style.opacity = '0';
+                    message.style.transform = 'translateY(-10px)';
+                    setTimeout(function () {
+                        message.remove();
+                    }, 300);
+                }, 5000);
+            });
+        });
     </script>
 </body>
+
 </html>

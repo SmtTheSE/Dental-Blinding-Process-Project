@@ -14,38 +14,26 @@
             <div>
                 <h4>OPG Image</h4>
 
-                <!-- Image Viewer Container -->
+                <!-- Large Image Viewer for Better Analysis -->
                 <div id="opg-viewer-container"
-                    style="position: relative; background: #f8f9fa; border-radius: 8px; overflow: hidden; border: 2px solid #e2e8f0;">
-                    <!-- Zoom Controls -->
-                    <div id="zoom-controls"
-                        style="position: absolute; top: 10px; right: 10px; z-index: 10; display: flex; gap: 5px; background: rgba(255,255,255,0.9); padding: 5px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
-                        <button type="button" id="zoom-in-btn" title="Zoom In"
-                            style="width: 36px; height: 36px; border: none; background: #4f46e5; color: white; border-radius: 4px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center;">+</button>
-                        <button type="button" id="zoom-out-btn" title="Zoom Out"
-                            style="width: 36px; height: 36px; border: none; background: #4f46e5; color: white; border-radius: 4px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center;">−</button>
-                        <button type="button" id="reset-zoom-btn" title="Reset View"
-                            style="width: 36px; height: 36px; border: none; background: #6b7280; color: white; border-radius: 4px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center;">⟲</button>
-                        <button type="button" id="fullscreen-btn" title="Fullscreen"
-                            style="width: 36px; height: 36px; border: none; background: #6b7280; color: white; border-radius: 4px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center;">⛶</button>
-                    </div>
-
+                    style="position: relative; background: #000; border-radius: 8px; overflow: hidden; border: 2px solid #e2e8f0;">
                     <!-- Zoom Level Indicator -->
                     <div id="zoom-level"
-                        style="position: absolute; bottom: 10px; left: 10px; z-index: 10; background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">
+                        style="position: absolute; top: 10px; right: 10px; z-index: 10; background: rgba(0,0,0,0.8); color: white; padding: 6px 12px; border-radius: 4px; font-size: 13px; font-weight: 600;">
                         100%</div>
 
                     <!-- Image Wrapper for Pan/Zoom -->
                     <div id="opg-image-wrapper"
-                        style="width: 100%; height: 400px; overflow: hidden; cursor: grab; display: flex; align-items: center; justify-content: center;">
+                        style="width: 100%; height: 600px; overflow: hidden; cursor: grab; display: flex; align-items: center; justify-content: center;">
                         <img id="opg-image" src="{{ opg }}" alt="OPG Image"
                             style="max-width: 100%; max-height: 100%; transition: transform 0.2s ease; user-select: none; -webkit-user-drag: none;">
                     </div>
 
                     <!-- Instructions -->
                     <div
-                        style="padding: 8px; background: #f1f5f9; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
-                        💡 <strong>Tip:</strong> Use mouse wheel to zoom, click and drag to pan
+                        style="padding: 10px; background: #1f2937; text-align: center; font-size: 13px; color: #9ca3af; border-top: 1px solid #374151;">
+                        💡 <strong style="color: #fff;">Tip:</strong> Use mouse wheel to zoom in/out • Click and drag to
+                        pan around the image
                     </div>
                 </div>
             </div>
@@ -71,37 +59,13 @@
     #opg-image-wrapper.grabbing {
         cursor: grabbing !important;
     }
-
-    #opg-viewer-container.fullscreen {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        z-index: 9999;
-        border-radius: 0;
-    }
-
-    #opg-viewer-container.fullscreen #opg-image-wrapper {
-        height: calc(100vh - 50px);
-    }
-
-    #zoom-controls button:hover {
-        opacity: 0.9;
-        transform: scale(1.05);
-    }
-
-    #zoom-controls button:active {
-        transform: scale(0.95);
-    }
 </style>
 
 <script>
     (function () {
-        // Image zoom and pan functionality
+        // Simple image zoom and pan functionality
         const image = document.getElementById('opg-image');
         const wrapper = document.getElementById('opg-image-wrapper');
-        const container = document.getElementById('opg-viewer-container');
         const zoomLevelDisplay = document.getElementById('zoom-level');
 
         if (!image || !wrapper) return;
@@ -121,7 +85,9 @@
 
         function updateTransform() {
             image.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
-            zoomLevelDisplay.textContent = Math.round(scale * 100) + '%';
+            if (zoomLevelDisplay) {
+                zoomLevelDisplay.textContent = Math.round(scale * 100) + '%';
+            }
         }
 
         function zoom(delta, centerX, centerY) {
@@ -133,7 +99,6 @@
                 translateX = 0;
                 translateY = 0;
             } else if (centerX !== undefined && centerY !== undefined) {
-                // Zoom towards cursor/touch point
                 const rect = wrapper.getBoundingClientRect();
                 const x = centerX - rect.left;
                 const y = centerY - rect.top;
@@ -187,14 +152,12 @@
 
         wrapper.addEventListener('touchstart', function (e) {
             if (e.touches.length === 2) {
-                // Pinch zoom
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 initialDistance = Math.sqrt(dx * dx + dy * dy);
                 initialScale = scale;
                 e.preventDefault();
             } else if (e.touches.length === 1 && scale > MIN_SCALE) {
-                // Pan
                 isDragging = true;
                 startX = e.touches[0].clientX;
                 startY = e.touches[0].clientY;
@@ -223,70 +186,16 @@
         wrapper.addEventListener('touchend', function () {
             isDragging = false;
         });
-
-        // Zoom buttons - with null checks and event prevention
-        const zoomInBtn = document.getElementById('zoom-in-btn');
-        const zoomOutBtn = document.getElementById('zoom-out-btn');
-        const resetBtn = document.getElementById('reset-zoom-btn');
-        const fullscreenBtn = document.getElementById('fullscreen-btn');
-
-        if (zoomInBtn) {
-            zoomInBtn.addEventListener('click', function (e) {
-                e.preventDefault();
-                e.stopPropagation();
-                zoom(ZOOM_STEP);
-            });
-        }
-
-        if (zoomOutBtn) {
-            zoomOutBtn.addEventListener('click', function (e) {
-                e.preventDefault();
-                e.stopPropagation();
-                zoom(-ZOOM_STEP);
-            });
-        }
-
-        if (resetBtn) {
-            resetBtn.addEventListener('click', function (e) {
-                e.preventDefault();
-                e.stopPropagation();
-                scale = MIN_SCALE;
-                translateX = 0;
-                translateY = 0;
-                updateTransform();
-            });
-        }
-
-        // Fullscreen toggle
-        if (fullscreenBtn) {
-            fullscreenBtn.addEventListener('click', function (e) {
-                e.preventDefault();
-                e.stopPropagation();
-                container.classList.toggle('fullscreen');
-                if (container.classList.contains('fullscreen')) {
-                    this.textContent = '✕';
-                    this.title = 'Exit Fullscreen';
-                } else {
-                    this.textContent = '⛶';
-                    this.title = 'Fullscreen';
-                }
-            });
-        }
-
-        // ESC key to exit fullscreen
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && container.classList.contains('fullscreen')) {
-                container.classList.remove('fullscreen');
-                if (fullscreenBtn) {
-                    fullscreenBtn.textContent = '⛶';
-                    fullscreenBtn.title = 'Fullscreen';
-                }
-            }
-        });
     })();
 
     // Cancel button
-    document.getElementById('cancel-estimation').addEventListener('click', function () {
-        document.getElementById('estimation-modal').style.display = 'none';
-    });
+    const cancelBtn = document.getElementById('cancel-estimation');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function () {
+            const modal = document.getElementById('estimation-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        });
+    }
 </script>

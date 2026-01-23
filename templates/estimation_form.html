@@ -2,22 +2,56 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="code" value="{{ code }}">
     <input type="hidden" name="method" value="{{ method.lower() }}">
-    
+
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
         <div>
             <h4>Patient Information</h4>
             <p><strong>Code:</strong> {{ code }}</p>
             <p><strong>Method:</strong> {{ method }}</p>
             <p><strong>Sex:</strong> {{ sex }}</p>
-            
+
             {% if opg %}
             <div>
                 <h4>OPG Image</h4>
-                <img src="{{ opg }}" alt="OPG Image" style="max-width: 100%; border-radius: var(--border-radius);">
+
+                <!-- Image Viewer Container -->
+                <div id="opg-viewer-container"
+                    style="position: relative; background: #f8f9fa; border-radius: 8px; overflow: hidden; border: 2px solid #e2e8f0;">
+                    <!-- Zoom Controls -->
+                    <div id="zoom-controls"
+                        style="position: absolute; top: 10px; right: 10px; z-index: 10; display: flex; gap: 5px; background: rgba(255,255,255,0.9); padding: 5px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+                        <button type="button" id="zoom-in-btn" title="Zoom In"
+                            style="width: 36px; height: 36px; border: none; background: #4f46e5; color: white; border-radius: 4px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center;">+</button>
+                        <button type="button" id="zoom-out-btn" title="Zoom Out"
+                            style="width: 36px; height: 36px; border: none; background: #4f46e5; color: white; border-radius: 4px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center;">−</button>
+                        <button type="button" id="reset-zoom-btn" title="Reset View"
+                            style="width: 36px; height: 36px; border: none; background: #6b7280; color: white; border-radius: 4px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center;">⟲</button>
+                        <button type="button" id="fullscreen-btn" title="Fullscreen"
+                            style="width: 36px; height: 36px; border: none; background: #6b7280; color: white; border-radius: 4px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center;">⛶</button>
+                    </div>
+
+                    <!-- Zoom Level Indicator -->
+                    <div id="zoom-level"
+                        style="position: absolute; bottom: 10px; left: 10px; z-index: 10; background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">
+                        100%</div>
+
+                    <!-- Image Wrapper for Pan/Zoom -->
+                    <div id="opg-image-wrapper"
+                        style="width: 100%; height: 400px; overflow: hidden; cursor: grab; display: flex; align-items: center; justify-content: center;">
+                        <img id="opg-image" src="{{ opg }}" alt="OPG Image"
+                            style="max-width: 100%; max-height: 100%; transition: transform 0.2s ease; user-select: none; -webkit-user-drag: none;">
+                    </div>
+
+                    <!-- Instructions -->
+                    <div
+                        style="padding: 8px; background: #f1f5f9; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+                        💡 <strong>Tip:</strong> Use mouse wheel to zoom, click and drag to pan
+                    </div>
+                </div>
             </div>
             {% endif %}
         </div>
-        
+
         <div>
             <h4>Age Estimation</h4>
             <div class="form-group">
@@ -26,15 +60,210 @@
             </div>
         </div>
     </div>
-    
+
     <div style="margin-top: 2rem; display: flex; gap: 1rem;">
         <button type="submit" class="btn">Submit Estimation</button>
         <button type="button" class="btn btn-secondary" id="cancel-estimation">Cancel</button>
     </div>
 </form>
 
+<style>
+    #opg-image-wrapper.grabbing {
+        cursor: grabbing !important;
+    }
+
+    #opg-viewer-container.fullscreen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 9999;
+        border-radius: 0;
+    }
+
+    #opg-viewer-container.fullscreen #opg-image-wrapper {
+        height: calc(100vh - 50px);
+    }
+
+    #zoom-controls button:hover {
+        opacity: 0.9;
+        transform: scale(1.05);
+    }
+
+    #zoom-controls button:active {
+        transform: scale(0.95);
+    }
+</style>
+
 <script>
-    document.getElementById('cancel-estimation').addEventListener('click', function() {
+    (function () {
+        // Image zoom and pan functionality
+        const image = document.getElementById('opg-image');
+        const wrapper = document.getElementById('opg-image-wrapper');
+        const container = document.getElementById('opg-viewer-container');
+        const zoomLevelDisplay = document.getElementById('zoom-level');
+
+        if (!image || !wrapper) return;
+
+        let scale = 1;
+        let translateX = 0;
+        let translateY = 0;
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+        let lastTranslateX = 0;
+        let lastTranslateY = 0;
+
+        const MIN_SCALE = 1;
+        const MAX_SCALE = 5;
+        const ZOOM_STEP = 0.3;
+
+        function updateTransform() {
+            image.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+            zoomLevelDisplay.textContent = Math.round(scale * 100) + '%';
+        }
+
+        function zoom(delta, centerX, centerY) {
+            const oldScale = scale;
+            scale += delta;
+            scale = Math.min(Math.max(scale, MIN_SCALE), MAX_SCALE);
+
+            if (scale === MIN_SCALE) {
+                translateX = 0;
+                translateY = 0;
+            } else if (centerX !== undefined && centerY !== undefined) {
+                // Zoom towards cursor/touch point
+                const rect = wrapper.getBoundingClientRect();
+                const x = centerX - rect.left;
+                const y = centerY - rect.top;
+
+                const scaleChange = scale / oldScale;
+                translateX = x - (x - translateX) * scaleChange;
+                translateY = y - (y - translateY) * scaleChange;
+            }
+
+            updateTransform();
+        }
+
+        // Mouse wheel zoom
+        wrapper.addEventListener('wheel', function (e) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+            zoom(delta, e.clientX, e.clientY);
+        }, { passive: false });
+
+        // Mouse drag to pan
+        wrapper.addEventListener('mousedown', function (e) {
+            if (scale > MIN_SCALE) {
+                isDragging = true;
+                wrapper.classList.add('grabbing');
+                startX = e.clientX;
+                startY = e.clientY;
+                lastTranslateX = translateX;
+                lastTranslateY = translateY;
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('mousemove', function (e) {
+            if (isDragging) {
+                translateX = lastTranslateX + (e.clientX - startX);
+                translateY = lastTranslateY + (e.clientY - startY);
+                updateTransform();
+            }
+        });
+
+        document.addEventListener('mouseup', function () {
+            if (isDragging) {
+                isDragging = false;
+                wrapper.classList.remove('grabbing');
+            }
+        });
+
+        // Touch support for mobile
+        let initialDistance = 0;
+        let initialScale = 1;
+
+        wrapper.addEventListener('touchstart', function (e) {
+            if (e.touches.length === 2) {
+                // Pinch zoom
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                initialDistance = Math.sqrt(dx * dx + dy * dy);
+                initialScale = scale;
+                e.preventDefault();
+            } else if (e.touches.length === 1 && scale > MIN_SCALE) {
+                // Pan
+                isDragging = true;
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                lastTranslateX = translateX;
+                lastTranslateY = translateY;
+            }
+        }, { passive: false });
+
+        wrapper.addEventListener('touchmove', function (e) {
+            if (e.touches.length === 2) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const newScale = initialScale * (distance / initialDistance);
+                scale = Math.min(Math.max(newScale, MIN_SCALE), MAX_SCALE);
+                updateTransform();
+                e.preventDefault();
+            } else if (isDragging && e.touches.length === 1) {
+                translateX = lastTranslateX + (e.touches[0].clientX - startX);
+                translateY = lastTranslateY + (e.touches[0].clientY - startY);
+                updateTransform();
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        wrapper.addEventListener('touchend', function () {
+            isDragging = false;
+        });
+
+        // Zoom buttons
+        document.getElementById('zoom-in-btn').addEventListener('click', function () {
+            zoom(ZOOM_STEP);
+        });
+
+        document.getElementById('zoom-out-btn').addEventListener('click', function () {
+            zoom(-ZOOM_STEP);
+        });
+
+        document.getElementById('reset-zoom-btn').addEventListener('click', function () {
+            scale = MIN_SCALE;
+            translateX = 0;
+            translateY = 0;
+            updateTransform();
+        });
+
+        // Fullscreen toggle
+        document.getElementById('fullscreen-btn').addEventListener('click', function () {
+            container.classList.toggle('fullscreen');
+            if (container.classList.contains('fullscreen')) {
+                this.textContent = '✕';
+                this.title = 'Exit Fullscreen';
+            } else {
+                this.textContent = '⛶';
+                this.title = 'Fullscreen';
+            }
+        });
+
+        // ESC key to exit fullscreen
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && container.classList.contains('fullscreen')) {
+                container.classList.remove('fullscreen');
+                document.getElementById('fullscreen-btn').textContent = '⛶';
+                document.getElementById('fullscreen-btn').title = 'Fullscreen';
+            }
+        });
+    })();
+
+    // Cancel button
+    document.getElementById('cancel-estimation').addEventListener('click', function () {
         document.getElementById('estimation-modal').style.display = 'none';
     });
 </script>

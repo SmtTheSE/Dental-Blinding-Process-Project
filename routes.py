@@ -483,45 +483,83 @@ def upload_opg(patient_id):
         # Handle file upload
         if 'opg_file' in request.files:
             file = request.files['opg_file']
-            if file and allowed_file(file.filename):
-                # Create upload directory if it doesn't exist
-                if not os.path.exists(UPLOAD_FOLDER):
-                    os.makedirs(UPLOAD_FOLDER)
+            
+            # Validate file
+            if not file:
+                current_app.logger.error("No file object received")
+                flash('No file selected')
+                return redirect(url_for('main.upload_opg', patient_id=patient_id))
+            
+            if file.filename == '':
+                current_app.logger.error("Empty filename received")
+                flash('No file selected')
+                return redirect(url_for('main.upload_opg', patient_id=patient_id))
+            
+            if not allowed_file(file.filename):
+                current_app.logger.error(f"Invalid file type: {file.filename}")
+                flash('Invalid file type. Please upload an image file.')
+                return redirect(url_for('main.upload_opg', patient_id=patient_id))
+            
+            current_app.logger.info(f"Processing OPG upload for patient {patient_id}, file: {file.filename}")
+            
+            # Create upload directory if it doesn't exist (for backward compatibility)
+            if not os.path.exists(UPLOAD_FOLDER):
+                os.makedirs(UPLOAD_FOLDER)
+            
+            filename = secure_filename(f"{patient.patient_id}_{file.filename}")
+            current_app.logger.info(f"Secured filename: {filename}")
+            
+            try:
+                # Import Supabase storage utility
+                from utils.storage import upload_image, delete_image
+                current_app.logger.info("Imported Supabase storage utilities")
                 
-                filename = secure_filename(f"{patient.patient_id}_{file.filename}")
+                # If patient already has an OPG image, delete it from Supabase first
+                if patient.opg_link and patient.opg_link.startswith('http'):
+                    try:
+                        current_app.logger.info(f"Patient has existing OPG link: {patient.opg_link[:50]}...")
+                        # Extract filename from URL - works for both public URLs and signed URLs
+                        # For signed URLs, we need to extract the path before the query parameters
+                        if '?' in patient.opg_link:
+                            # Signed URL - extract filename from path before query parameters
+                            path_part = patient.opg_link.split('?')[0]
+                            old_filename = path_part.split('/')[-1]
+                        else:
+                            # Regular URL - extract filename from last part of URL
+                            old_filename = patient.opg_link.split('/')[-1]
+                        current_app.logger.info(f"Attempting to delete old image: {old_filename}")
+                        delete_image(old_filename)
+                        current_app.logger.info("Old image deleted successfully")
+                    except Exception as e:
+                        # Log error but continue with upload
+                        current_app.logger.error(f"Failed to delete old image: {str(e)}")
+                        current_app.logger.error(f"Error type: {type(e)}")
                 
-                try:
-                    # Import Supabase storage utility
-                    from utils.storage import upload_image, delete_image
-                    
-                    # If patient already has an OPG image, delete it from Supabase first
-                    if patient.opg_link and patient.opg_link.startswith('http'):
-                        try:
-                            # Extract filename from URL - works for both public URLs and signed URLs
-                            # For signed URLs, we need to extract the path before the query parameters
-                            if '?' in patient.opg_link:
-                                # Signed URL - extract filename from path before query parameters
-                                path_part = patient.opg_link.split('?')[0]
-                                old_filename = path_part.split('/')[-1]
-                            else:
-                                # Regular URL - extract filename from last part of URL
-                                old_filename = patient.opg_link.split('/')[-1]
-                            delete_image(old_filename)
-                        except Exception as e:
-                            # Log error but continue with upload
-                            current_app.logger.error(f"Failed to delete old image: {str(e)}")
-                    
-                    # Upload to Supabase
-                    file_url = upload_image(file, filename)
-                    
-                    # Store URL in database
-                    patient.opg_link = file_url
-                except Exception as e:
-                    flash(f'Error uploading OPG: {str(e)}')
-                    return redirect(url_for('main.upload_opg', patient_id=patient_id))
+                # Upload to Supabase
+                current_app.logger.info(f"Starting upload to Supabase for file: {filename}")
+                file_url = upload_image(file, filename)
+                current_app.logger.info(f"Upload successful! File URL: {file_url[:100]}...")
+                
+                # Store URL in database
+                patient.opg_link = file_url
                 db.session.commit()
+                current_app.logger.info(f"Database updated with new OPG link for patient {patient_id}")
+                
                 flash('OPG uploaded successfully')
                 return redirect(url_for('main.manage_patients'))
+                
+            except ValueError as ve:
+                # Supabase configuration error
+                current_app.logger.error(f"Supabase configuration error: {str(ve)}")
+                flash(f'Configuration error: {str(ve)}. Please contact administrator.')
+                return redirect(url_for('main.upload_opg', patient_id=patient_id))
+            except Exception as e:
+                current_app.logger.error(f"Error uploading OPG: {str(e)}")
+                current_app.logger.error(f"Error type: {type(e)}")
+                import traceback
+                current_app.logger.error(f"Traceback: {traceback.format_exc()}")
+                flash(f'Error uploading OPG: {str(e)}')
+                return redirect(url_for('main.upload_opg', patient_id=patient_id))
     
     return render_template('upload_opg.html', patient=patient)
 

@@ -41,6 +41,14 @@ def create_app(config_name='default'):
         app.logger.info(f'SUPABASE_DB_URL: {"set" if os.environ.get("SUPABASE_DB_URL") else "not set"}')
         app.logger.info(f'Configured database URI: {app.config.get("SQLALCHEMY_DATABASE_URI", "not set")}'[:50] + "...")
         
+        # Check Supabase Storage configuration
+        supabase_url = os.environ.get('SUPABASE_URL')
+        supabase_key = os.environ.get('SUPABASE_KEY')
+        app.logger.info(f'SUPABASE_URL: {"set" if supabase_url else "NOT SET - OPG uploads will fail!"}')
+        app.logger.info(f'SUPABASE_KEY: {"set" if supabase_key else "NOT SET - OPG uploads will fail!"}')
+        if supabase_url:
+            app.logger.info(f'Supabase URL domain: {supabase_url[:30]}...')
+        
         # Check for missing database URL
         if not os.environ.get('SUPABASE_DB_URL') and not os.environ.get('DATABASE_URL'):
             app.logger.warning("CRITICAL WARNING: SUPABASE_DB_URL environment variable is not set!")

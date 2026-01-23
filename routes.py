@@ -502,10 +502,6 @@ def upload_opg(patient_id):
             
             current_app.logger.info(f"Processing OPG upload for patient {patient_id}, file: {file.filename}")
             
-            # Create upload directory if it doesn't exist (for backward compatibility)
-            if not os.path.exists(UPLOAD_FOLDER):
-                os.makedirs(UPLOAD_FOLDER)
-            
             filename = secure_filename(f"{patient.patient_id}_{file.filename}")
             current_app.logger.info(f"Secured filename: {filename}")
             
@@ -535,7 +531,7 @@ def upload_opg(patient_id):
                         current_app.logger.error(f"Failed to delete old image: {str(e)}")
                         current_app.logger.error(f"Error type: {type(e)}")
                 
-                # Upload to Supabase
+                # Upload to Supabase (no local storage needed on Vercel)
                 current_app.logger.info(f"Starting upload to Supabase for file: {filename}")
                 file_url = upload_image(file, filename)
                 current_app.logger.info(f"Upload successful! File URL: {file_url[:100]}...")

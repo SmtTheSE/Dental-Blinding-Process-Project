@@ -2,38 +2,110 @@
 
 {% block title %}Update Patient - Dental Age Estimation System{% endblock %}
 
+{% block extra_css %}
+<style>
+    .form-group-minimal {
+        margin-bottom: 32px;
+    }
+
+    .form-group-minimal label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--apple-gray);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .form-group-minimal input,
+    .form-group-minimal select {
+        width: 100%;
+        padding: 12px 0;
+        border: none;
+        border-bottom: 1px solid #d2d2d7;
+        font-size: 17px;
+        color: var(--apple-dark);
+        background: transparent;
+        border-radius: 0;
+        transition: border-color 0.2s;
+    }
+
+    .form-group-minimal input:focus,
+    .form-group-minimal select:focus {
+        outline: none;
+        border-color: var(--apple-blue);
+        box-shadow: none;
+    }
+
+    .minimal-button {
+        background: none;
+        border: none;
+        color: var(--apple-blue);
+        font-size: 17px;
+        font-weight: 500;
+        cursor: pointer;
+        padding: 0;
+        transition: opacity 0.2s;
+    }
+
+    .minimal-button:hover {
+        opacity: 0.7;
+    }
+
+    .minimal-button.secondary {
+        color: var(--apple-gray);
+    }
+
+    @media (max-width: 600px) {
+        .form-grid-split {
+            grid-template-columns: 1fr !important;
+            gap: 24px !important;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container">
-    <h2>Update Patient Information</h2>
-    
-    <form method="POST" style="background: white; padding: 2rem; border-radius: var(--border-radius); box-shadow: var(--box-shadow); max-width: 600px;">
+<div class="page-header" style="margin-bottom: 60px;">
+    <h1>Update Patient</h1>
+    <p>Edit patient details and demographics.</p>
+</div>
+
+<div style="max-width: 480px; margin: 0 auto; animation: fadeInUp 0.6s ease-out;">
+    <form method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <div class="form-group">
-            <label for="patient_id">Patient ID:</label>
-            <input type="text" id="patient_id" name="patient_id" value="{{ patient.patient_id }}" required>
+
+        <div class="form-group-minimal">
+            <label for="patient_id">Patient ID</label>
+            <input type="text" id="patient_id" name="patient_id" value="{{ patient.patient_id }}" required
+                placeholder="e.g. P-001">
         </div>
-        
-        <div class="form-group">
-            <label for="name">Name:</label>
-            <input type="text" id="name" name="name" value="{{ patient.name or '' }}">
+
+        <div class="form-group-minimal">
+            <label for="name">Full Name</label>
+            <input type="text" id="name" name="name" value="{{ patient.name or '' }}" placeholder="Optional">
         </div>
-        
-        <div class="form-group">
-            <label for="actual_age">Actual Age:</label>
-            <input type="number" step="0.1" id="actual_age" name="actual_age" value="{{ patient.actual_age }}" required>
+
+        <div class="form-grid-split" style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
+            <div class="form-group-minimal">
+                <label for="actual_age">Age</label>
+                <input type="number" step="0.1" id="actual_age" name="actual_age" value="{{ patient.actual_age }}"
+                    required>
+            </div>
+
+            <div class="form-group-minimal">
+                <label for="sex">Sex</label>
+                <select id="sex" name="sex">
+                    <option value="male" {% if patient.sex=='male' %}selected{% endif %}>Male</option>
+                    <option value="female" {% if patient.sex=='female' %}selected{% endif %}>Female</option>
+                </select>
+            </div>
         </div>
-        
-        <div class="form-group">
-            <label for="sex">Sex:</label>
-            <select id="sex" name="sex">
-                <option value="male" {% if patient.sex == 'male' %}selected{% endif %}>Male</option>
-                <option value="female" {% if patient.sex == 'female' %}selected{% endif %}>Female</option>
-            </select>
-        </div>
-        
-        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-            <button type="submit" class="btn">Update Patient</button>
-            <a href="/patients" class="btn btn-secondary">Cancel</a>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 40px;">
+            <a href="/patients" class="minimal-button secondary">Cancel</a>
+            <button type="submit" class="minimal-button">Save Changes →</button>
         </div>
     </form>
 </div>

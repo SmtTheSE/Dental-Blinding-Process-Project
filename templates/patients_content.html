@@ -1,11 +1,10 @@
 <!-- CSV/Excel Import Form -->
-<div
-    style="background: white; padding: 1.5rem; border-radius: var(--border-radius); box-shadow: var(--box-shadow); margin-bottom: 2rem;">
+<div class="card">
     <h3>Import Patients from File</h3>
     <p>Upload a CSV or Excel file to import multiple patients at once. The system will automatically skip patients that
         already exist in the database.</p>
 
-    <div style="background-color: #d1ecf1; padding: 1rem; border-radius: var(--border-radius); margin: 1rem 0;">
+    <div class="info-box">
         <strong>Supported Formats:</strong>
         <ul>
             <li><strong>Simple Format (Recommended):</strong> ID, Name, Actual Age, Sex</li>
@@ -13,7 +12,7 @@
         </ul>
     </div>
 
-    <div style="background-color: #fff3cd; padding: 1rem; border-radius: var(--border-radius); margin: 1rem 0;">
+    <div class="warning-box">
         <strong>Note:</strong> Images cannot be imported directly from Excel files. Please upload images separately
         after importing patient data.
     </div>
@@ -31,8 +30,7 @@
 </div>
 
 <!-- Manual Patient Creation Form -->
-<div
-    style="background: white; padding: 1.5rem; border-radius: var(--border-radius); box-shadow: var(--box-shadow); margin-bottom: 2rem;">
+<div class="card">
     <h3>Add New Patient</h3>
 
     <form method="POST">
@@ -89,49 +87,47 @@
     {% endif %}
 
     {% if patients.items %}
-    <table>
-        <tr>
-            <th>Patient ID</th>
-            <th>Name</th>
-            <th>Actual Age</th>
-            <th>Sex</th>
-            <th>OPG Image</th>
-            <th>Code A (AlQahtani)</th>
-            <th>Code B (Demirjian)</th>
-            <th>Actions</th>
-        </tr>
-        {% for patient in patients.items %}
-        <tr>
-            <td>{{ patient.patient_id }}</td>
-            <td>{{ patient.name or 'N/A' }}</td>
-            <td>{{ patient.actual_age }}</td>
-            <td>{{ patient.sex }}</td>
-            <td style="text-align: center; padding: 8px; width: 70px; min-width: 70px;">
-                {% if patient.opg_link %}
-                <div
-                    style="width: 60px; height: 60px; margin: 4px auto; overflow: hidden; border-radius: 6px; border: 1px solid #e5e5e7; display: flex; align-items: center; justify-content: center;">
-                    <img src="{{ patient.opg_link }}" alt="OPG"
-                        style="width: auto; height: auto; max-width: 56px; max-height: 56px; object-fit: contain; display: block;">
-                </div>
-                {% else %}
-                <span style="font-size: 11px; color: #86868b;">No image</span>
-                {% endif %}
-            </td>
-            <td>{{ patient.code_a or 'Not assigned' }}</td>
-            <td>{{ patient.code_b or 'Not assigned' }}</td>
-            <td>
-                <div class="action-buttons">
-                    <a href="/upload_opg/{{ patient.id }}" class="btn btn-success">Upload OPG</a>
-                    <a href="/patients/update/{{ patient.id }}" class="btn btn-warning">Update</a>
-                    <form method="POST" action="/patients/delete/{{ patient.id }}" style="display: inline;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <button type="submit" class="btn btn-danger">Delete</button>
-                    </form>
-                </div>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
+    <div class="table-container">
+        <table>
+            <tr>
+                <th>Patient ID</th>
+                <th>Name</th>
+                <th>Actual Age</th>
+                <th>Sex</th>
+                <th>OPG Image</th>
+                <th>Code A (AlQahtani)</th>
+                <th>Code B (Demirjian)</th>
+                <th>Actions</th>
+            </tr>
+            {% for patient in patients.items %}
+            <tr>
+                <td>{{ patient.patient_id }}</td>
+                <td>{{ patient.name or 'N/A' }}</td>
+                <td>{{ patient.actual_age }}</td>
+                <td>{{ patient.sex }}</td>
+                <td style="text-align: center; width: 70px;">
+                    {% if patient.opg_link %}
+                    <img src="{{ patient.opg_link }}" alt="OPG" class="opg-thumbnail">
+                    {% else %}
+                    <span style="font-size: 11px; color: var(--apple-gray);">No image</span>
+                    {% endif %}
+                </td>
+                <td>{{ patient.code_a or 'Not assigned' }}</td>
+                <td>{{ patient.code_b or 'Not assigned' }}</td>
+                <td>
+                    <div class="action-buttons">
+                        <a href="/upload_opg/{{ patient.id }}" class="btn btn-success">Upload OPG</a>
+                        <a href="/patients/update/{{ patient.id }}" class="btn btn-warning">Update</a>
+                        <form method="POST" action="/patients/delete/{{ patient.id }}" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="btn btn-danger">Delete</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
 
     <!-- Pagination Controls -->
     {% if patients.pages > 1 %}

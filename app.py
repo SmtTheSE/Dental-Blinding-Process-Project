@@ -75,48 +75,37 @@ def create_app(config_name='default'):
     app.register_blueprint(auth)
     app.register_blueprint(main)
     
-    # Security headers
-    @app.after_request
-    def after_request(response):
-        # Prevent clickjacking
-        response.headers['X-Frame-Options'] = 'DENY'
-        
-        # XSS protection
-        response.headers['X-XSS-Protection'] = '1; mode=block'
-        
-        # Content type sniffing protection
-        response.headers['X-Content-Type-Options'] = 'nosniff'
-        
-        # Strict transport security (only in production)
-        if not app.config['DEBUG'] and app.config.get('SESSION_COOKIE_SECURE', False):
-            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-            
-        # Content security policy - allow inline images for charts and Supabase images
-        supabase_url = os.environ.get('SUPABASE_URL', '').replace('https://', '')
-        if supabase_url:
-            # Extract the domain from the Supabase URL
-            supabase_domain = supabase_url.split('/')[0] if '/' in supabase_url else supabase_url
-            csp = f"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://{supabase_domain}"
-        else:
-            csp = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:"
-        
-        response.headers['Content-Security-Policy'] = csp
-        
-        return response
+    # Initialize Flask-Talisman for security headers and HTTPS
+    # Define Content Security Policy
+    supabase_url = os.environ.get('SUPABASE_URL', '').replace('https://', '')
+    supabase_domain = supabase_url.split('/')[0] if '/' in supabase_url else supabase_url
     
+    csp = {
+        'default-src': "'self'",
+        'script-src': ["'self'", "'unsafe-inline'"],
+        'style-src': ["'self'", "'unsafe-inline'"],
+        'img-src': ["'self'", "data:", f"https://{supabase_domain}" if supabase_domain else "https:"],
+        'connect-src': ["'self'", f"https://{supabase_domain}" if supabase_domain else "https:"]
+    }
+    
+    from flask_talisman import Talisman
+    Talisman(app, 
+             content_security_policy=csp,
+             force_https=not app.debug and not app.testing,  # Force HTTPS in production
+             session_cookie_secure=not app.debug and not app.testing,
+             session_cookie_http_only=True)
+    
+    @app.route('/favicon.ico')
+    def favicon():
+        return send_from_directory(os.path.join(app.root_path, 'static', 'img'),
+                                   'UDMM.jpeg', mimetype='image/jpeg')
+
     @app.context_processor
     def inject_global_csrf_token():
         """Inject CSRF token into all templates"""
         # Use the generate_csrf_token function from routes instead of auth
         from routes import generate_csrf_token
         return dict(csrf_token=generate_csrf_token())
-    
-    @app.before_request
-    def before_request():
-        # Force HTTPS in production
-        if not app.config['DEBUG'] and not request.is_secure and request.url.startswith('http://'):
-            url = request.url.replace('http://', 'https://', 1)
-            return redirect(url, code=301)
     
     # Health check endpoint for Render
     @app.route('/health')

@@ -2,182 +2,208 @@
 
 {% block title %}Estimate Age - Dental Age Estimation System{% endblock %}
 
-{% block content %}
-<div class="container">
-    <h2>Estimate Dental Age</h2>
-    <p>As a Principal Investigator, you can estimate dental age using blinded data. Please select a method and provide your estimation.</p>
-    
-    <!-- Search Form -->
-    <form method="GET" action="/estimate_age">
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
-            <input 
-                type="text" 
-                name="search" 
-                placeholder="Search by Code..." 
-                value="{{ search_query or '' }}"
-                style="flex: 1; min-width: 200px; padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: var(--border-radius); font-size: 1rem; box-sizing: border-box;"
-            >
-            <button type="submit" class="btn">Search</button>
-            {% if search_query %}
-            <a href="/estimate_age" class="btn btn-secondary">Clear</a>
-            {% endif %}
-        </div>
-    </form>
-    
-    <div id="search-results-container">
-        {% if search_query %}
-        <div class="search-results-info">
-            Search results for: <strong>"{{ search_query }}"</strong> ({{ patients.total }} entr{{ patients.total != 1 and 'ies' or 'y' }})
-        </div>
-        {% endif %}
+{% block extra_css %}
+<style>
+    /* Minimalist Search */
+    .search-container {
+        margin-bottom: 40px;
+        animation: fadeInUp 0.6s ease-out backwards;
+    }
 
-        {% if entries %}
-        <table>
+    .search-input {
+        width: 100%;
+        max-width: 400px;
+        padding: 12px 0;
+        border: none;
+        border-bottom: 1px solid #d2d2d7;
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--apple-dark);
+        background: transparent;
+        transition: border-color 0.2s;
+        border-radius: 0;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: var(--apple-blue);
+        box-shadow: none;
+    }
+
+    .search-input::placeholder {
+        color: #d2d2d7;
+        font-weight: 500;
+    }
+
+    /* Table Minimal */
+    .table-minimal {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table-minimal th {
+        text-align: left;
+        padding: 16px 0;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--apple-gray);
+        text-transform: uppercase;
+        border-bottom: 1px solid #e5e5ea;
+        background: transparent;
+    }
+
+    .table-minimal td {
+        padding: 20px 0;
+        border-bottom: 1px solid #f5f5f7;
+        font-size: 15px;
+        color: var(--apple-dark);
+    }
+
+    .table-minimal tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* Modal Minimal */
+    #estimation-modal {
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        background-color: rgba(255, 255, 255, 0.4);
+        transition: opacity 0.3s ease;
+    }
+
+    .modal-content-minimal {
+        background: #fff;
+        margin: 10% auto;
+        border-radius: 24px;
+        width: 90%;
+        max-width: 600px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+        padding: 40px;
+        animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+        position: relative;
+    }
+
+    .close-btn {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        font-size: 28px;
+        color: var(--apple-gray);
+        cursor: pointer;
+        line-height: 1;
+        transition: color 0.2s;
+    }
+
+    .close-btn:hover {
+        color: var(--apple-dark);
+    }
+
+    /* Action Links */
+    .action-link {
+        color: var(--apple-blue);
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        border: none;
+        background: none;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    .action-link:hover {
+        opacity: 0.7;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 60px;">
+    <h1>Estimate Age</h1>
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 24px;">
+        <p style="margin: 0; max-width: 500px;">Review blinded data and submit age assessments.</p>
+
+        <!-- Search Inline -->
+        <form method="GET" action="/estimate_age"
+            style="display: flex; align-items: center; border-bottom: 1px solid #d2d2d7;">
+            <span style="color: #d2d2d7; margin-right: 8px;">🔍</span>
+            <input type="text" name="search" placeholder="Search code" value="{{ search_query or '' }}"
+                style="border: none; background: transparent; padding: 8px 0; font-size: 15px; width: 200px; outline: none;">
+            {% if search_query %}
+            <a href="/estimate_age"
+                style="color: var(--apple-gray); text-decoration: none; font-size: 18px; margin-left: 8px;">×</a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<div style="animation: fadeInUp 0.6s ease-out 0.2s backwards;">
+    {% if entries %}
+    <table class="table-minimal">
+        <thead>
             <tr>
                 <th>Code</th>
                 <th>Method</th>
                 <th>OPG Image</th>
                 <th>Sex</th>
-                <th>Actions</th>
+                <th style="text-align: right;">Action</th>
             </tr>
+        </thead>
+        <tbody>
             {% for entry in entries %}
             <tr>
-                <td>{{ entry.code }}</td>
+                <td style="font-family: monospace; font-size: 16px;">{{ entry.code }}</td>
                 <td>{{ entry.method }}</td>
                 <td>
                     {% if entry.opg_link %}
-                    <img src="{{ entry.opg_link }}" alt="OPG Image" style="max-width: 100px; max-height: 100px; border-radius: 4px;">
+                    <img src="{{ entry.opg_link }}" alt="OPG"
+                        style="height: 40px; width: auto; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1);">
                     {% else %}
-                    No image
+                    <span style="color: var(--apple-gray); font-size: 13px;">—</span>
                     {% endif %}
                 </td>
-                <td>{{ entry.sex }}</td>
-                <td>
-                    <button class="btn estimate-btn" 
-                            data-code="{{ entry.code }}" 
-                            data-method="{{ entry.method }}"
-                            data-opg="{{ entry.opg_link or '' }}"
-                            data-sex="{{ entry.sex }}">
-                        Estimate Age
-                    </button>
+                <td style="text-transform: capitalize;">{{ entry.sex }}</td>
+                <td style="text-align: right;">
+                    <a href="{{ url_for('main.perform_estimation', code=entry.code, method=entry.method, opg=entry.opg_link, sex=entry.sex) }}"
+                        class="action-link" style="display: inline-block;">
+                        Start Estimation →
+                    </a>
                 </td>
             </tr>
             {% endfor %}
-        </table>
-        
-        <!-- Pagination Controls -->
-        {% if patients.pages > 1 %}
-        <div class="pagination">
-            <!-- Previous button -->
-            {% if patients.has_prev %}
-                <a href="{{ url_for('main.estimate_age', page=patients.prev_num, search=search_query) }}" class="btn btn-secondary">&laquo; Previous</a>
-            {% else %}
-                <span class="btn btn-secondary disabled">&laquo; Previous</span>
-            {% endif %}
-            
-            <!-- Page numbers -->
-            {% for page_num in patients.iter_pages() %}
-                {% if page_num %}
-                    {% if page_num != patients.page %}
-                        <a href="{{ url_for('main.estimate_age', page=page_num, search=search_query) }}" class="btn btn-secondary">{{ page_num }}</a>
-                    {% else %}
-                        <span class="btn active">{{ page_num }}</span>
-                    {% endif %}
-                {% else %}
-                    <span class="ellipsis">…</span>
-                {% endif %}
-            {% endfor %}
-            
-            <!-- Next button -->
-            {% if patients.has_next %}
-                <a href="{{ url_for('main.estimate_age', page=patients.next_num, search=search_query) }}" class="btn btn-secondary">Next &raquo;</a>
-            {% else %}
-                <span class="btn btn-secondary disabled">Next &raquo;</span>
-            {% endif %}
-        </div>
-        {% endif %}
-        
-        {% else %}
-        <div style="background: white; padding: 2rem; text-align: center; border-radius: var(--border-radius); box-shadow: var(--box-shadow);">
-            <h3>No Blinded Data Available</h3>
-            <p>{% if search_query %}No entries match your search query: <strong>"{{ search_query }}"</strong>.{% else %}No blinded data has been generated yet. Please ask the supervisor to assign codes to patients.{% endif %}</p>
-            <div style="margin-top: 1rem;">
-                <a href="/" class="btn">Home</a>
-            </div>
-        </div>
-        {% endif %}
-    </div>
+        </tbody>
+    </table>
 
-    <!-- Estimation Modal -->
-    <div id="estimation-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000;">
-        <div style="background: white; margin: 5% auto; padding: 2rem; border-radius: var(--border-radius); max-width: 800px; position: relative;">
-            <span id="close-modal" style="position: absolute; top: 1rem; right: 1rem; font-size: 1.5rem; cursor: pointer;">&times;</span>
-            <h3>Estimate Age</h3>
-            <div id="estimation-content">
-                <!-- Content will be loaded dynamically -->
-            </div>
-        </div>
+    <!-- Pagination -->
+    {% if patients.pages > 1 %}
+    <div style="margin-top: 40px; display: flex; gap: 20px; justify-content: center;">
+        {% if patients.has_prev %}
+        <a href="{{ url_for('main.estimate_age', page=patients.prev_num, search=search_query) }}"
+            class="action-link">Previous</a>
+        {% endif %}
+
+        <span style="color: var(--apple-gray); font-size: 13px;">Page {{ patients.page }} of {{ patients.pages }}</span>
+
+        {% if patients.has_next %}
+        <a href="{{ url_for('main.estimate_age', page=patients.next_num, search=search_query) }}"
+            class="action-link">Next</a>
+        {% endif %}
     </div>
+    {% endif %}
+
+    {% else %}
+    <div style="padding: 60px 0; text-align: center; color: var(--apple-gray);">
+        <p>
+            {% if search_query %}
+            No entries found.
+            {% else %}
+            No pending estimations found.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Handle estimate button clicks
-        document.querySelectorAll('.estimate-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                const code = this.getAttribute('data-code');
-                const method = this.getAttribute('data-method');
-                const opg = this.getAttribute('data-opg');
-                const sex = this.getAttribute('data-sex');
-                
-                // Show modal with estimation form
-                fetch(`/get_estimation_form?code=${encodeURIComponent(code)}&method=${encodeURIComponent(method)}&opg=${encodeURIComponent(opg)}&sex=${encodeURIComponent(sex)}`)
-                    .then(response => response.text())
-                    .then(html => {
-                        document.getElementById('estimation-content').innerHTML = html;
-                        document.getElementById('estimation-modal').style.display = 'block';
-                        
-                        // Handle form submission
-                        const form = document.getElementById('estimation-form');
-                        if (form) {
-                            form.addEventListener('submit', function(e) {
-                                e.preventDefault();
-                                
-                                const formData = new FormData(this);
-                                
-                                // Get CSRF token from the form
-                                const csrfToken = formData.get('csrf_token');
-                                
-                                fetch('/estimate_age', {
-                                    method: 'POST',
-                                    body: formData,
-                                    headers: {
-                                        'X-CSRF-Token': csrfToken
-                                    }
-                                })
-                                .then(response => response.text())
-                                .then(html => {
-                                    // Reload the page to show updated data
-                                    location.reload();
-                                });
-                            });
-                        }
-                    });
-            });
-        });
-        
-        // Handle modal close
-        document.getElementById('close-modal').addEventListener('click', function() {
-            document.getElementById('estimation-modal').style.display = 'none';
-        });
-        
-        // Close modal when clicking outside
-        window.addEventListener('click', function(event) {
-            const modal = document.getElementById('estimation-modal');
-            if (event.target === modal) {
-                modal.style.display = 'none';
-            }
-        });
-    });
-</script>
+<div style="margin-top: 80px; text-align: center;">
+    <a href="/" class="action-link">Back to Dashboard</a>
+</div>
 {% endblock %}

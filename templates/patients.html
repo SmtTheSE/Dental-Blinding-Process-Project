@@ -4,441 +4,397 @@
 
 {% block extra_css %}
 <style>
-    .section-card {
-        background: white;
-        border-radius: 18px;
-        padding: 24px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        margin-bottom: 24px;
-        transition: box-shadow 0.3s;
-        max-width: 100%;
-        overflow: hidden;
-    }
-
-    .section-card:hover {
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-    }
-
-    .section-header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 16px;
-    }
-
-    .section-icon {
-        width: 36px;
-        height: 36px;
-        min-width: 36px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #0071e3 0%, #0077ed 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 16px;
-        font-weight: 600;
-    }
-
-    .section-title {
-        font-size: 21px;
-        font-weight: 600;
-        margin: 0;
-        letter-spacing: -0.009em;
-    }
-
-    .info-box {
-        background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
-        border-left: 4px solid #0071e3;
-        padding: 14px 16px;
-        border-radius: 12px;
-        margin: 12px 0;
-    }
-
-    .warning-box {
-        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-        border-left: 4px solid #f59e0b;
-        padding: 14px 16px;
-        border-radius: 12px;
-        margin: 12px 0;
-    }
-
-    .info-box strong,
-    .warning-box strong {
-        display: block;
-        margin-bottom: 6px;
-        font-size: 13px;
-        font-weight: 600;
-    }
-
-    .info-box ul,
-    .warning-box ul {
-        margin: 6px 0 0 18px;
-        font-size: 13px;
-        color: var(--apple-gray);
-    }
-
-    .info-box p,
-    .warning-box p {
-        margin: 0;
-        font-size: 13px;
-        color: var(--apple-gray);
-    }
-
-    .form-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
-        margin-top: 16px;
-    }
-
+    /* Minimalist Search */
     .search-container {
-        background: white;
-        border-radius: 18px;
-        padding: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        margin-bottom: 24px;
+        margin-bottom: 40px;
+        animation: fadeInUp 0.6s ease-out backwards;
     }
 
     .search-input {
-        flex: 1;
-        min-width: 0;
-        padding: 12px 16px;
-        border: 1px solid #d2d2d7;
-        border-radius: 12px;
-        font-size: 15px;
-        transition: all 0.3s;
         width: 100%;
+        max-width: 400px;
+        padding: 12px 0;
+        border: none;
+        border-bottom: 1px solid #d2d2d7;
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--apple-dark);
+        background: transparent;
+        transition: border-color 0.2s;
+        border-radius: 0;
+        /* Remove default radius */
     }
 
     .search-input:focus {
         outline: none;
         border-color: var(--apple-blue);
-        box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
-    }
-
-    .empty-state {
-        background: white;
-        padding: 48px 32px;
-        text-align: center;
-        border-radius: 18px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    }
-
-    .empty-state-icon {
-        font-size: 56px;
-        margin-bottom: 12px;
-        opacity: 0.3;
-    }
-
-    .empty-state h3 {
-        font-size: 21px;
-        font-weight: 600;
-        margin-bottom: 6px;
-    }
-
-    .empty-state p {
-        color: var(--apple-gray);
-        font-size: 15px;
-    }
-
-    .action-bar {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-top: 24px;
-        padding-top: 24px;
-        border-top: 1px solid #e5e5e7;
-    }
-
-    .table-container {
-        background: white;
-        border-radius: 18px;
-        overflow-x: auto;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    }
-
-    .table-container table {
         box-shadow: none;
-        border-radius: 0;
-        min-width: 100%;
     }
 
-    .opg-thumbnail {
-        width: auto !important;
-        height: auto !important;
-        max-width: 60px !important;
-        max-height: 60px !important;
-        min-width: 50px !important;
-        min-height: 50px !important;
-        border-radius: 6px;
-        object-fit: contain;
-        display: block;
-        border: 1px solid #e5e5e7;
-        margin: 4px auto;
-    }
-
-    .opg-cell {
-        text-align: center;
-        vertical-align: middle;
-        padding: 8px !important;
-        width: 70px;
-        min-width: 70px;
-    }
-
-    .badge {
-        display: inline-block;
-        padding: 4px 10px;
-        border-radius: 12px;
-        font-size: 11px;
+    .search-input::placeholder {
+        color: #d2d2d7;
         font-weight: 500;
-        background: #f5f5f7;
+    }
+
+    /* Minimalist Sections */
+    .minimal-section {
+        margin-top: 120px;
+        /* Added to push table down */
+        margin-bottom: 100px;
+        /* Increased from 60px */
+        animation: fadeInUp 0.6s ease-out backwards;
+    }
+
+    .minimal-section h2 {
+        font-size: 24px;
+        /* Increased from 21px */
+        font-weight: 600;
+        margin-bottom: 40px;
+        /* Increased from 24px */
+        color: var(--apple-dark);
+        letter-spacing: -0.01em;
+    }
+
+    .form-minimal-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 40px;
+        /* Increased from 32px */
+        align-items: end;
+    }
+
+    .form-group-minimal label {
+        display: block;
+        margin-bottom: 12px;
+        /* Increased from 8px */
+        font-size: 13px;
+        font-weight: 500;
         color: var(--apple-gray);
-        white-space: nowrap;
     }
 
-    .badge-assigned {
-        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-        color: #065f46;
+    .form-group-minimal input,
+    .form-group-minimal select {
+        width: 100%;
+        padding: 16px 0;
+        /* Increased from 10px */
+        border: none;
+        border-bottom: 1px solid #e5e5ea;
+        background: transparent;
+        font-size: 19px;
+        /* Increased from 17px */
+        color: var(--apple-dark);
+        border-radius: 0;
+        transition: border-color 0.2s;
     }
 
-    /* Responsive */
-    @media (max-width: 768px) {
-        .section-card {
-            padding: 20px;
-        }
+    .form-group-minimal input:focus,
+    .form-group-minimal select:focus {
+        outline: none;
+        border-color: var(--apple-blue);
+        box-shadow: none;
+    }
 
-        .section-title {
-            font-size: 18px;
-        }
+    /* Table Minimal */
+    .table-minimal {
+        width: 100%;
+        border-collapse: collapse;
+    }
 
-        .form-grid {
+    .table-minimal th {
+        text-align: left;
+        padding: 20px 0;
+        /* Increased from 16px */
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--apple-gray);
+        text-transform: uppercase;
+        border-bottom: 1px solid #e5e5ea;
+        background: transparent;
+    }
+
+    .table-minimal td {
+        padding: 28px 0;
+        /* Increased from 20px */
+        border-bottom: 1px solid #f5f5f7;
+        font-size: 16px;
+        /* Slightly larger */
+        color: var(--apple-dark);
+    }
+
+    .table-minimal tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* Action Links */
+    .action-link {
+        color: var(--apple-blue);
+        text-decoration: none;
+        font-size: 15px;
+        margin-right: 24px;
+        font-weight: 500;
+        transition: opacity 0.2s;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    .action-link:hover {
+        opacity: 0.7;
+    }
+
+    .action-link.delete {
+        color: var(--apple-gray);
+    }
+
+    .action-link.delete:hover {
+        color: #ff3b30;
+    }
+
+    /* Layout Utils */
+    .split-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 120px;
+        /* Doubled from 60px */
+        margin-bottom: 180px;
+        /* Increased from 100px to push table down */
+        animation: fadeInUp 0.6s ease-out 0.1s backwards;
+    }
+
+    @media (max-width: 900px) {
+        .split-layout {
             grid-template-columns: 1fr;
+            gap: 40px;
+            /* Reduced from 60px/120px */
+            margin-bottom: 80px;
         }
 
-        .action-bar {
-            flex-direction: column;
-        }
-
-        .action-bar .btn {
+        .search-input {
             width: 100%;
+            max-width: none;
+            /* Full width on mobile */
+            font-size: 20px;
         }
 
-        .opg-thumbnail {
-            max-width: 50px;
-            max-height: 50px;
+        .minimal-section h2 {
+            font-size: 20px;
+            margin-bottom: 24px;
         }
+    }
+
+    /* Scrollable Table Container */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -24px;
+        /* Negative margin to bleed to edge on mobile */
+        padding: 0 24px;
+        /* Padding to align content */
+    }
+
+    @media (max-width: 768px) {
+        .table-responsive {
+            margin: 0 -16px;
+            padding: 0 16px;
+        }
+    }
+
+    .file-input-wrapper {
+        position: relative;
+        overflow: hidden;
+        display: inline-block;
+    }
+
+    .file-input-btn {
+        color: var(--apple-blue);
+        font-size: 15px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    .file-input-wrapper input[type=file] {
+        position: absolute;
+        left: 0;
+        top: 0;
+        opacity: 0;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Manage Patients</h1>
-    <p>Add, import, and manage research participants</p>
-</div>
+<div class="page-header" style="margin-bottom: 60px;">
+    <h1>Patients</h1>
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 24px;">
+        <p style="margin: 0; max-width: 500px;">Manage study research database.</p>
 
-<!-- Import Section -->
-<div class="section-card">
-    <div class="section-header">
-        <div class="section-icon">📁</div>
-        <h2 class="section-title">Import Patients from File</h2>
-    </div>
-
-    <p style="color: var(--apple-gray); margin-bottom: 16px;">Upload a CSV or Excel file to import multiple patients at
-        once. The system will automatically skip patients that already exist in the database.</p>
-
-    <div class="info-box">
-        <strong>Supported Formats:</strong>
-        <ul>
-            <li><strong>Simple Format (Recommended):</strong> ID, Name, Actual Age, Sex</li>
-            <li><strong>Full Format:</strong> ID, Name, Age, Sex, OPG, A code, D code, A Age, D Age, Actual age</li>
-        </ul>
-    </div>
-
-    <div class="warning-box">
-        <strong>Note:</strong>
-        <p>Images cannot be imported directly from Excel files. Please upload images separately after importing patient
-            data.</p>
-    </div>
-
-    <form method="POST" enctype="multipart/form-data" style="margin-top: 24px;">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <div class="form-group">
-            <label for="csv_file">Select CSV or Excel File:</label>
-            <input type="file" id="csv_file" name="csv_file" accept=".csv,.xlsx,.xls" required>
-            <small style="color: var(--apple-gray);">Supported formats: CSV, XLSX, XLS</small>
-        </div>
-
-        <button type="submit" class="btn">Upload File</button>
-    </form>
-</div>
-
-<!-- Add Patient Section -->
-<div class="section-card">
-    <div class="section-header">
-        <div class="section-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">+</div>
-        <h2 class="section-title">Add New Patient</h2>
-    </div>
-
-    <form method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <div class="form-grid">
-            <div class="form-group">
-                <label for="patient_id">Patient ID:</label>
-                <input type="text" id="patient_id" name="patient_id" required placeholder="Enter unique ID">
-            </div>
-
-            <div class="form-group">
-                <label for="name">Name:</label>
-                <input type="text" id="name" name="name" placeholder="Enter patient name">
-            </div>
-
-            <div class="form-group">
-                <label for="actual_age">Actual Age:</label>
-                <input type="number" step="0.1" id="actual_age" name="actual_age" required placeholder="0.0">
-            </div>
-
-            <div class="form-group">
-                <label for="sex">Sex:</label>
-                <select id="sex" name="sex">
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                </select>
-            </div>
-        </div>
-
-        <button type="submit" class="btn" style="margin-top: 16px;">Add Patient</button>
-    </form>
-</div>
-
-<!-- Search Section -->
-<div class="search-container">
-    <form method="GET" action="/patients">
-        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-            <input type="text" name="search" class="search-input" placeholder="Search by Patient ID, Name, or Codes..."
-                value="{{ search_query or '' }}">
-            <button type="submit" class="btn">Search</button>
+        <!-- Search Inline -->
+        <form method="GET" action="/patients"
+            style="display: flex; align-items: center; border-bottom: 1px solid #d2d2d7;">
+            <span style="color: #d2d2d7; margin-right: 8px;">🔍</span>
+            <input type="text" name="search" placeholder="Search patients" value="{{ search_query or '' }}"
+                style="border: none; background: transparent; padding: 8px 0; font-size: 15px; width: 200px; outline: none;">
             {% if search_query %}
-            <a href="/patients" class="btn btn-secondary">Clear</a>
+            <a href="/patients"
+                style="color: var(--apple-gray); text-decoration: none; font-size: 18px; margin-left: 8px;">×</a>
             {% endif %}
-        </div>
-    </form>
+        </form>
+    </div>
 </div>
 
-<!-- Results Section -->
-<div id="search-results-container">
-    {% if search_query %}
-    <div class="info-box"
-        style="background: linear-gradient(135deg, #f5f5f7 0%, #e5e5e7 100%); border-left-color: var(--apple-gray);">
-        <strong>Search results for: "{{ search_query }}"</strong>
-        <p>{{ patients.total }} patient{{ patients.total != 1 and 's' or '' }} found</p>
+<!-- Forms Section -->
+<div class="split-layout">
+    <!-- Quick Add -->
+    <div>
+        <h2 style="font-size: 19px; font-weight: 600; margin-bottom: 24px;">Add Patient</h2>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div style="display: grid; gap: 20px;">
+                <div class="form-group-minimal">
+                    <label>Patient ID</label>
+                    <input type="text" name="patient_id" required placeholder="P-001">
+                </div>
+                <div class="form-group-minimal">
+                    <label>Full Name</label>
+                    <input type="text" name="name" placeholder="Optional">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group-minimal">
+                        <label>Age</label>
+                        <input type="number" step="0.1" name="actual_age" required placeholder="0.0">
+                    </div>
+                    <div class="form-group-minimal">
+                        <label>Sex</label>
+                        <select name="sex">
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="action-link" style="text-align: left; margin-top: 12px; font-size: 15px;">+
+                    Add Patient</button>
+            </div>
+        </form>
     </div>
-    {% endif %}
 
+    <!-- Import -->
+    <div>
+        <h2 style="font-size: 19px; font-weight: 600; margin-bottom: 24px;">Import Data</h2>
+        <p style="font-size: 15px; color: var(--apple-gray); line-height: 1.5; margin-bottom: 24px;">
+            Upload CSV or Excel files for bulk import. <br>
+            Supported formats: ID, Name, Age, Sex layout.
+        </p>
+
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div class="file-input-wrapper">
+                    <span class="file-input-btn">Choose File</span>
+                    <input type="file" name="csv_file" accept=".csv,.xlsx,.xls" onchange="this.form.submit()">
+                </div>
+                <span style="font-size: 13px; color: var(--apple-gray);">No file chosen</span>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Patients List -->
+<div class="minimal-section" style="animation-delay: 0.2s;">
     {% if patients.items %}
-    <div class="table-container">
-        <table>
-            <tr>
-                <th>Patient ID</th>
-                <th>Name</th>
-                <th>Actual Age</th>
-                <th>Sex</th>
-                <th>OPG Image</th>
-                <th>Code A</th>
-                <th>Code B</th>
-                <th>Actions</th>
-            </tr>
-            {% for patient in patients.items %}
-            <tr>
-                <td><strong>{{ patient.patient_id }}</strong></td>
-                <td>{{ patient.name or 'N/A' }}</td>
-                <td>{{ patient.actual_age }}</td>
-                <td>{{ patient.sex|capitalize }}</td>
-                <td class="opg-cell">
-                    {% if patient.opg_link %}
-                    <img src="{{ patient.opg_link }}" alt="OPG" class="opg-thumbnail">
-                    {% else %}
-                    <span class="badge">No image</span>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if patient.code_a %}
-                    <span class="badge badge-assigned">{{ patient.code_a }}</span>
-                    {% else %}
-                    <span class="badge">Not assigned</span>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if patient.code_b %}
-                    <span class="badge badge-assigned">{{ patient.code_b }}</span>
-                    {% else %}
-                    <span class="badge">Not assigned</span>
-                    {% endif %}
-                </td>
-                <td>
-                    <div class="action-buttons">
-                        <a href="/upload_opg/{{ patient.id }}" class="btn btn-success">Upload OPG</a>
-                        <a href="/patients/update/{{ patient.id }}" class="btn btn-warning">Update</a>
+    <div class="table-responsive">
+        <table class="table-minimal">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Patient Name</th>
+                    <th>Age</th>
+                    <th>Sex</th>
+                    <th>OPG Status</th>
+                    <th>Blind Code A</th>
+                    <th>Blind Code B</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for patient in patients.items %}
+                <tr>
+                    <td style="font-weight: 500;">{{ patient.patient_id }}</td>
+                    <td>{{ patient.name or '—' }}</td>
+                    <td>{{ patient.actual_age }}</td>
+                    <td style="text-transform: capitalize;">{{ patient.sex }}</td>
+                    <td>
+                        {% if patient.opg_link %}
+                        <span style="color: #34c759; font-size: 13px;">Uploaded</span>
+                        {% else %}
+                        <span style="color: var(--apple-gray); font-size: 13px;">Missing</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if patient.code_a %}
+                        <span
+                            style="font-family: monospace; background: #f5f5f7; padding: 2px 6px; border-radius: 4px;">{{
+                            patient.code_a }}</span>
+                        {% else %}
+                        <span style="color: var(--apple-gray);">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if patient.code_b %}
+                        <span
+                            style="font-family: monospace; background: #f5f5f7; padding: 2px 6px; border-radius: 4px;">{{
+                            patient.code_b }}</span>
+                        {% else %}
+                        <span style="color: var(--apple-gray);">—</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right; white-space: nowrap;">
+                        <a href="/upload_opg/{{ patient.id }}" class="action-link">Upload</a>
+                        <a href="/patients/update/{{ patient.id }}" class="action-link">Edit</a>
                         <form method="POST" action="/patients/delete/{{ patient.id }}" style="display: inline;">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                            <button type="submit" class="btn btn-danger">Delete</button>
+                            <button type="submit" class="action-link delete">Delete</button>
                         </form>
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
     </div>
 
-    <!-- Pagination -->
+    <!-- Minimal Pagination -->
     {% if patients.pages > 1 %}
-    <div class="pagination">
+    <div style="margin-top: 40px; display: flex; gap: 20px; justify-content: center;">
         {% if patients.has_prev %}
         <a href="{{ url_for('main.manage_patients', page=patients.prev_num, search=search_query) }}"
-            class="btn btn-secondary">← Previous</a>
-        {% else %}
-        <span class="btn btn-secondary disabled">← Previous</span>
+            class="action-link">Previous</a>
         {% endif %}
 
-        {% for page_num in patients.iter_pages() %}
-        {% if page_num %}
-        {% if page_num != patients.page %}
-        <a href="{{ url_for('main.manage_patients', page=page_num, search=search_query) }}" class="btn btn-secondary">{{
-            page_num }}</a>
-        {% else %}
-        <span class="btn current-page">{{ page_num }}</span>
-        {% endif %}
-        {% else %}
-        <span class="ellipsis">…</span>
-        {% endif %}
-        {% endfor %}
+        <span style="color: var(--apple-gray); font-size: 13px;">Page {{ patients.page }} of {{ patients.pages }}</span>
 
         {% if patients.has_next %}
         <a href="{{ url_for('main.manage_patients', page=patients.next_num, search=search_query) }}"
-            class="btn btn-secondary">Next →</a>
-        {% else %}
-        <span class="btn btn-secondary disabled">Next →</span>
+            class="action-link">Next</a>
         {% endif %}
     </div>
     {% endif %}
 
     {% else %}
-    <div class="empty-state">
-        <div class="empty-state-icon">📋</div>
-        <h3>No Patients Found</h3>
-        <p>{% if search_query %}No patients match your search query: <strong>"{{ search_query }}"</strong>.{% else %}Add
-            patients using the forms above to get started.{% endif %}</p>
+    <div style="padding: 60px 0; text-align: center; color: var(--apple-gray);">
+        <p>No patients found in the database.</p>
     </div>
     {% endif %}
 </div>
 
-<!-- Action Bar -->
-<div class="action-bar">
-    <a href="/assign_codes" class="btn">Assign Codes</a>
-    <a href="/blinded_data" class="btn">View Blinded Data</a>
-    <a href="/analysis" class="btn">Analysis Results</a>
-    <a href="/export_patients" class="btn">Export to Excel</a>
-    <a href="/" class="btn btn-secondary">← Back to Dashboard</a>
+<!-- Simple Footer Links -->
+<div style="margin-top: 80px; text-align: center; display: flex; gap: 24px; justify-content: center;">
+    <a href="/" class="minimal-link"
+        style="font-size: 15px; color: var(--apple-blue); text-decoration: none;">Dashboard</a>
+    <a href="/assign_codes" class="minimal-link"
+        style="font-size: 15px; color: var(--apple-blue); text-decoration: none;">Assign Codes</a>
+    <a href="/analysis" class="minimal-link"
+        style="font-size: 15px; color: var(--apple-blue); text-decoration: none;">Analysis</a>
 </div>
 {% endblock %}

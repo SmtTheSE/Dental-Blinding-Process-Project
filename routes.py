@@ -746,9 +746,9 @@ def estimate_age():
     
     return render_template('estimate_age.html', entries=blinded_entries, search_query=search_query, patients=patients)
 
-@main.route('/get_estimation_form')
+@main.route('/perform_estimation')
 @role_required('pi')
-def get_estimation_form():
+def perform_estimation():
     code = request.args.get('code')
     method = request.args.get('method')
     opg = request.args.get('opg')
@@ -760,7 +760,7 @@ def get_estimation_form():
     else:  # Demirjian
         teeth = get_demirjian_teeth()
     
-    return render_template('estimation_form.html', 
+    return render_template('perform_estimation.html', 
                           code=code, 
                           method=method, 
                           opg=opg, 
@@ -1027,6 +1027,9 @@ def export_patients():
     for col in range(1, len(headers) + 1):
         ws.column_dimensions[get_column_letter(col)].width = 15
     
+    # Increase width for Image column (5th column -> E)
+    ws.column_dimensions['E'].width = 25
+
     # Make header row bold
     for col in range(1, len(headers) + 1):
         cell = ws.cell(row=1, column=col)
@@ -1064,6 +1067,9 @@ def export_patients():
             
         # Write data
         for row_idx, patient in enumerate(patients, start=offset+2):
+            # Set row height to accommodate image
+            ws.row_dimensions[row_idx].height = 80
+            
             # Add patient data
             ws.cell(row=row_idx, column=1, value=patient.patient_id)
             ws.cell(row=row_idx, column=2, value=patient.name)
@@ -1081,36 +1087,61 @@ def export_patients():
                 try:
                     if patient.opg_link.startswith('http'):
                         # Handle Supabase image URL
-                        # Download the image from the URL directly into memory
-                        import urllib.request
-                        # Download image data
-                        with urllib.request.urlopen(patient.opg_link, timeout=30) as response:
-                            image_data = BytesIO(response.read())
-                            # Load and resize image
-                            img = ExcelImage(image_data)
-                            # Resize image to fit in the cell
-                            img.width = 100
-                            img.height = 100
-                            # Add image to the worksheet
-                            ws.add_image(img, f'E{row_idx}')
+                        try:
+                            import urllib.request
+                            import ssl
+                            
+                            # Create unverified SSL context to bypass certificate issues
+                            ctx = ssl.create_default_context()
+                            ctx.check_hostname = False
+                            ctx.verify_mode = ssl.CERT_NONE
+                            
+                            # Download image data with unverified context
+                            with urllib.request.urlopen(patient.opg_link, context=ctx, timeout=60) as response:
+                                image_data = BytesIO(response.read())
+                                # Load image
+                                img = ExcelImage(image_data)
+                                
+                                # Resize image to fit in the cell
+                                img.height = 100
+                                img.width = 100
+                                
+                                # Add image to the worksheet at column E
+                                ws.add_image(img, f'E{row_idx}')
+                        except Exception as e:
+                            ws.cell(row=row_idx, column=5, value="Image Load Error")
+                            logger.error(f"Failed to embed image for patient {patient.patient_id}: {str(e)}")
                     else:
                         # Handle local image file
-                        # Extract filename from the path
                         image_path = patient.opg_link.lstrip('/')
-                        if os.path.exists(image_path):
-                            # Load and resize image
-                            img = ExcelImage(image_path)
-                            # Resize image to fit in the cell
-                            img.width = 100
-                            img.height = 100
-                            # Add image to the worksheet
-                            ws.add_image(img, f'E{row_idx}')
+                        # Check multiple path possibilities
+                        possible_paths = [
+                            os.path.join(current_app.root_path, image_path),
+                            os.path.abspath(image_path),
+                            image_path
+                        ]
+                        
+                        found_path = None
+                        for path in possible_paths:
+                            if os.path.exists(path):
+                                found_path = path
+                                break
+                                
+                        if found_path:
+                            try:
+                                img = ExcelImage(found_path)
+                                img.height = 100
+                                img.width = 100
+                                ws.add_image(img, f'E{row_idx}')
+                            except Exception as e:
+                                ws.cell(row=row_idx, column=5, value="Image Format Error")
                         else:
-                            # If image file doesn't exist, put a note in the cell
-                            ws.cell(row=row_idx, column=5, value="Image not found")
+                             ws.cell(row=row_idx, column=5, value="File Not Found")
                 except Exception as e:
-                    # If there's an error loading the image, put error message in the cell
-                    ws.cell(row=row_idx, column=5, value=f"Error loading image: {str(e)}")
+                    logger.error(f"Error processing image for excel: {str(e)}")
+                    ws.cell(row=row_idx, column=5, value="Error")
+            else:
+                ws.cell(row=row_idx, column=5, value="No Image")
         
         offset += len(patients)
         if len(patients) < batch_size:

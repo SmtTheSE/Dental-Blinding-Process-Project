@@ -1,13 +1,8 @@
 <!-- Search Form -->
 <form method="GET" action="/blinded_data">
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-        <input 
-            type="text" 
-            name="search" 
-            placeholder="Search by Code..." 
-            value="{{ search_query or '' }}"
-            style="flex: 1; min-width: 200px;"
-        >
+        <input type="text" name="search" placeholder="Search by Code..." value="{{ search_query or '' }}"
+            style="flex: 1; min-width: 200px;">
         <button type="submit" class="btn">Search</button>
         {% if search_query %}
         <a href="/blinded_data" class="btn btn-secondary">Clear</a>
@@ -22,74 +17,82 @@
 <div id="search-results-container">
     {% if search_query %}
     <div class="search-results-info">
-        Search results for: <strong>"{{ search_query }}"</strong> ({{ patients.total }} entr{{ patients.total != 1 and 'ies' or 'y' }})
+        Search results for: <strong>"{{ search_query }}"</strong> ({{ patients.total }} entr{{ patients.total != 1 and
+        'ies' or 'y' }})
     </div>
     {% endif %}
 
     {% if entries %}
-    <table>
-        <tr>
-            <th>Code</th>
-            <th>Method</th>
-            <th>OPG Image</th>
-            <th>Sex</th>
-        </tr>
-        {% for entry in entries %}
-        <tr>
-            <td>{{ entry.code }}</td>
-            <td>{{ entry.method }}</td>
-            <td>
-                {% if entry.opg_link %}
-                <img src="{{ entry.opg_link }}" alt="OPG Image" style="max-width: 100px; max-height: 100px; border-radius: 4px;">
-                {% else %}
-                No image
-                {% endif %}
-            </td>
-            <td>{{ entry.sex }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-    
+    <div class="table-container">
+        <table>
+            <tr>
+                <th>Code</th>
+                <th>Method</th>
+                <th>OPG Image</th>
+                <th>Sex</th>
+            </tr>
+            {% for entry in entries %}
+            <tr>
+                <td>{{ entry.code }}</td>
+                <td>{{ entry.method }}</td>
+                <td>
+                    {% if entry.opg_link %}
+                    <img src="{{ entry.opg_link }}" alt="OPG Image"
+                        style="max-width: 100px; max-height: 100px; border-radius: 4px;">
+                    {% else %}
+                    No image
+                    {% endif %}
+                </td>
+                <td>{{ entry.sex }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
     <!-- Pagination Controls -->
     {% if patients.pages > 1 %}
     <div class="pagination">
         <!-- Previous button -->
         {% if patients.has_prev %}
-            <a href="{{ url_for('main.blinded_data', page=patients.prev_num, search=search_query) }}" class="btn btn-secondary">&laquo; Previous</a>
+        <a href="{{ url_for('main.blinded_data', page=patients.prev_num, search=search_query) }}"
+            class="btn btn-secondary">&laquo; Previous</a>
         {% else %}
-            <span class="btn btn-secondary disabled">&laquo; Previous</span>
+        <span class="btn btn-secondary disabled">&laquo; Previous</span>
         {% endif %}
-        
+
         <!-- Page numbers -->
         {% for page_num in patients.iter_pages() %}
-            {% if page_num %}
-                {% if page_num != patients.page %}
-                    <a href="{{ url_for('main.blinded_data', page=page_num, search=search_query) }}" class="btn btn-secondary">{{ page_num }}</a>
-                {% else %}
-                    <span class="btn active">{{ page_num }}</span>
-                {% endif %}
-            {% else %}
-                <span class="ellipsis">…</span>
-            {% endif %}
+        {% if page_num %}
+        {% if page_num != patients.page %}
+        <a href="{{ url_for('main.blinded_data', page=page_num, search=search_query) }}" class="btn btn-secondary">{{
+            page_num }}</a>
+        {% else %}
+        <span class="btn active">{{ page_num }}</span>
+        {% endif %}
+        {% else %}
+        <span class="ellipsis">…</span>
+        {% endif %}
         {% endfor %}
-        
+
         <!-- Next button -->
         {% if patients.has_next %}
-            <a href="{{ url_for('main.blinded_data', page=patients.next_num, search=search_query) }}" class="btn btn-secondary">Next &raquo;</a>
+        <a href="{{ url_for('main.blinded_data', page=patients.next_num, search=search_query) }}"
+            class="btn btn-secondary">Next &raquo;</a>
         {% else %}
-            <span class="btn btn-secondary disabled">Next &raquo;</span>
+        <span class="btn btn-secondary disabled">Next &raquo;</span>
         {% endif %}
     </div>
     {% endif %}
-    
+
     {% else %}
-    <div style="background: white; padding: 2rem; text-align: center; border-radius: var(--border-radius); box-shadow: var(--box-shadow);">
+    <div
+        style="background: white; padding: 2rem; text-align: center; border-radius: var(--border-radius); box-shadow: var(--box-shadow);">
         <h3>No Blinded Data Available</h3>
         <p>
             {% if search_query %}
-                No entries match your search query: <strong>"{{ search_query }}"</strong>.
+            No entries match your search query: <strong>"{{ search_query }}"</strong>.
             {% else %}
-                No blinded data has been generated yet. Please assign codes to patients first.
+            No blinded data has been generated yet. Please assign codes to patients first.
             {% endif %}
         </p>
         <div style="margin-top: 1rem;">

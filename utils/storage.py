@@ -10,10 +10,11 @@ def get_supabase_client() -> Client:
         Client: Supabase client instance
     """
     url = os.environ.get("SUPABASE_URL")
-    key = os.environ.get("SUPABASE_KEY")
+    # Prefer Service Key for backend operations to bypass RLS, fall back to Anon Key
+    key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_KEY")
     
     if not url or not key:
-        raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in environment variables")
+        raise ValueError("SUPABASE_URL and SUPABASE_KEY (or SUPABASE_SERVICE_KEY) must be set")
     
     return create_client(url, key)
 

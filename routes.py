@@ -441,12 +441,23 @@ def delete_patient(patient_id):
         except:
             pass  # If file doesn't exist or can't be deleted, continue anyway
     
+    # Delete associated estimation entries (orphans)
+    if patient.code_a:
+        EstimationEntry.query.filter_by(code=patient.code_a).delete()
+    if patient.code_b:
+        EstimationEntry.query.filter_by(code=patient.code_b).delete()
+        
     # Delete the patient record
     db.session.delete(patient)
     
     try:
         db.session.commit()
-        flash('Patient deleted successfully!')
+        
+        # Clear chart cache so charts update instantly
+        global chart_cache
+        chart_cache = {}
+        
+        flash('Patient and associated data deleted successfully!')
         
         # Renumber patient IDs after deletion
         renumber_patient_ids()

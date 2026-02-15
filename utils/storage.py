@@ -38,7 +38,14 @@ def upload_image(file, filename: str) -> str:
     try:
         logger.info(f"Starting upload for file: {filename}")
         
-        # Get Supabase client
+        # Get Supabase client (only used for generating signed URL later if needed, or we can just use env vars)
+        # We need url and key for direct HTTP request
+        url = os.environ.get("SUPABASE_URL")
+        key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_KEY")
+        
+        if not url or not key:
+             raise ValueError("SUPABASE_URL and SUPABASE_KEY (or SUPABASE_SERVICE_KEY) must be set")
+
         supabase = get_supabase_client()
         bucket = "opg-images"
         logger.info(f"Supabase client initialized, bucket: {bucket}")

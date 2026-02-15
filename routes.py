@@ -1,4 +1,4 @@
-from flask import Blueprint, request, render_template, redirect, url_for, flash, session, Response, current_app, send_from_directory
+from flask import Blueprint, request, render_template, redirect, url_for, flash, session, Response, current_app, send_from_directory, send_file
 from models import db, Patient, EstimationEntry
 from dental_methods import calculate_demirjian_score, calculate_alqahtani_age, get_alqahtani_teeth, get_demirjian_teeth
 from functools import wraps
@@ -1244,10 +1244,11 @@ def export_patients():
     wb.save(output)
     output.seek(0)
     
-    return Response(
+    return send_file(
         output,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment;filename=patients.xlsx"}
+        as_attachment=True,
+        download_name="patients.xlsx"
     )
 
 @main.route('/reset-passwords', methods=['GET', 'POST'])

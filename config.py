@@ -36,8 +36,11 @@ class DevelopmentConfig(Config):
 
 class ProductionConfig(Config):
     DEBUG = False
-    # Security Configuration
-    SESSION_COOKIE_SECURE = True
+    # Security Configuration - Only secure cookies if on HTTPS (usually Vercel/Render)
+    # Browsers like Chrome usually allow Secure cookies on localhost even without HTTPS, 
+    # but some environments are stricter.
+    is_prod_env = os.environ.get('RENDER') or os.environ.get('VERCEL')
+    SESSION_COOKIE_SECURE = True if is_prod_env else False
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     # PERMANENT_SESSION_LIFETIME is already set in app.py generally, but good to ensure security context

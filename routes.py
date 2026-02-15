@@ -98,8 +98,16 @@ def validate_csrf_token():
 @main.before_request
 def csrf_protect():
     """CSRF protection for all POST requests"""
-    # TEMPORARILY DISABLED FOR DEBUGGING
-    return None
+    # Exclude Supabase Webhooks or other API endpoints if needed
+    if request.method == "POST":
+        token = session.get('csrf_token')
+        if not token or token != request.form.get('csrf_token'):
+            # If token is missing or invalid, check headers (for AJAX)
+            header_token = request.headers.get('X-CSRFToken')
+            if not header_token or header_token != token:
+                # Log the error for debugging
+                current_app.logger.error(f"CSRF validation failed. Session: {token}, Form: {request.form.get('csrf_token')}, Header: {header_token}")
+                abort(403)
     # if request.method == "POST":
     #     # Skip CSRF check for specific endpoints
     #     if request.endpoint not in ['main.upload_opg', 'main.get_estimation_form']:

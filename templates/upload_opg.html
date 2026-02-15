@@ -2,194 +2,35 @@
 
 {% block title %}Upload OPG - Dental Age Estimation System{% endblock %}
 
-{% block extra_css %}
-<style>
-    /* Minimalist Upload Section */
-    .upload-wrapper {
-        max-width: 600px;
-        margin: 0 auto;
-        animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .page-header {
-        text-align: center;
-        margin-bottom: 60px;
-    }
-
-    .page-header h2 {
-        font-size: 28px;
-        font-weight: 600;
-        margin-bottom: 12px;
-        color: var(--apple-dark);
-        letter-spacing: -0.01em;
-    }
-
-    .page-header p {
-        font-size: 17px;
-        color: var(--apple-gray);
-    }
-
-    /* Minimalist File Input */
-    .file-drop-area {
-        border: 2px dashed #d2d2d7;
-        border-radius: 20px;
-        padding: 60px 40px;
-        text-align: center;
-        transition: all 0.2s ease;
-        background: rgba(255, 255, 255, 0.5);
-        cursor: pointer;
-        position: relative;
-    }
-
-    .file-drop-area:hover,
-    .file-drop-area.dragover {
-        border-color: var(--apple-blue);
-        background: rgba(0, 113, 227, 0.05);
-    }
-
-    .file-input {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        top: 0;
-        left: 0;
-        opacity: 0;
-        cursor: pointer;
-    }
-
-    .upload-icon {
-        font-size: 48px;
-        color: var(--apple-blue);
-        margin-bottom: 16px;
-        display: block;
-    }
-
-    .upload-text {
-        font-size: 17px;
-        font-weight: 500;
-        color: var(--apple-dark);
-        margin-bottom: 8px;
-    }
-
-    .upload-subtext {
-        font-size: 14px;
-        color: var(--apple-gray);
-    }
-
-    .file-name {
-        margin-top: 20px;
-        font-size: 15px;
-        font-weight: 600;
-        color: var(--apple-blue);
-        display: none;
-    }
-
-    /* Submit Button */
-    .btn-submit {
-        display: block;
-        width: 100%;
-        background: var(--apple-blue);
-        color: white;
-        padding: 18px;
-        border: none;
-        border-radius: 980px;
-        font-size: 17px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        margin-top: 40px;
-        box-shadow: 0 4px 12px rgba(0, 113, 227, 0.2);
-    }
-
-    .btn-submit:hover {
-        background: var(--apple-blue-hover);
-        transform: scale(1.02);
-        box-shadow: 0 10px 25px rgba(0, 113, 227, 0.3);
-    }
-
-    /* Back Link */
-    .back-link-wrapper {
-        text-align: center;
-        margin-top: 40px;
-    }
-
-    .back-link {
-        color: var(--apple-gray);
-        text-decoration: none;
-        font-size: 15px;
-        transition: color 0.2s;
-    }
-
-    .back-link:hover {
-        color: var(--apple-dark);
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="upload-wrapper">
-    <div class="page-header">
-        <h2>Upload OPG Image</h2>
-        <p>Patient ID: <span style="font-weight: 600; color: var(--apple-dark);">{{ patient.patient_id }}</span></p>
+<div style="max-width: 600px; margin: 0 auto;">
+    <div style="text-align: center; margin-bottom: 40px;">
+        <h1>Upload OPG</h1>
+        <p>PATIENT ID: <span style="font-weight: 700; border-bottom: 1px solid var(--text-color);">{{ patient.patient_id
+                }}</span></p>
     </div>
 
-    <form method="POST" enctype="multipart/form-data">
+    <form method="POST" enctype="multipart/form-data" class="card" style="padding: 40px; text-align: center;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
-        <div class="file-drop-area" id="drop-area">
-            <span class="upload-icon">📷</span>
-            <div class="upload-text">Click to select or drag and drop</div>
-            <div class="upload-subtext">Supports PNG, JPG, JPEG</div>
-            <div class="file-name" id="file-name"></div>
-            <input type="file" id="opg_file" name="opg_file" accept="image/*" class="file-input" required>
+        <div class="form-group" style="margin-bottom: 40px;">
+            <label for="opg_file" style="margin-bottom: 20px; cursor: pointer; display: block;">
+                <div style="font-size: 48px; margin-bottom: 10px;">📷</div>
+                <span style="font-size: 18px; text-decoration: underline;">SELECT IMAGE FILE</span>
+                <br>
+                <span style="font-size: 12px; color: #666;">(JPG, PNG supported)</span>
+            </label>
+            <input type="file" id="opg_file" name="opg_file" accept="image/*" required style="display: none;"
+                onchange="document.getElementById('file-name').innerText = this.files[0].name">
+            <div id="file-name" style="margin-top: 10px; font-weight: 700;"></div>
         </div>
 
-        <button type="submit" class="btn-submit">Upload and Save</button>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">UPLOAD & SAVE</button>
     </form>
 
-    <div class="back-link-wrapper">
-        <a href="{{ url_for('main.manage_patients') }}" class="back-link">Cancel and return to patients</a>
+    <div style="text-align: center; margin-top: 40px;">
+        <a href="{{ url_for('main.manage_patients') }}" style="text-transform: uppercase; font-size: 12px;">&larr;
+            Cancel / Return to Patients</a>
     </div>
 </div>
-
-<script>
-    const fileInput = document.getElementById('opg_file');
-    const dropArea = document.getElementById('drop-area');
-    const fileNameDisplay = document.getElementById('file-name');
-
-    // Drag and drop effects
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropArea.addEventListener(eventName, (e) => {
-            e.preventDefault();
-            dropArea.classList.add('dragover');
-        }, false);
-    });
-
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, (e) => {
-            e.preventDefault();
-            dropArea.classList.remove('dragover');
-        }, false);
-    });
-
-    // Handle file selection
-    fileInput.addEventListener('change', function () {
-        if (this.files && this.files[0]) {
-            fileNameDisplay.textContent = this.files[0].name;
-            fileNameDisplay.style.display = 'block';
-        }
-    });
-
-    // Handle drop
-    dropArea.addEventListener('drop', (e) => {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        fileInput.files = files;
-
-        if (files && files[0]) {
-            fileNameDisplay.textContent = files[0].name;
-            fileNameDisplay.style.display = 'block';
-        }
-    });
-</script>
 {% endblock %}

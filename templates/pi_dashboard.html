@@ -2,139 +2,43 @@
 
 {% block title %}PI Dashboard - Dental Age Estimation System{% endblock %}
 
-{% block extra_css %}
-<style>
-    /* Minimalist Grid */
-    .minimal-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 60px;
-        margin-bottom: 80px;
-        animation: fadeInUp 0.6s ease-out 0.1s backwards;
-    }
-
-    .minimal-card h3 {
-        font-size: 21px;
-        font-weight: 600;
-        margin-bottom: 12px;
-        color: var(--apple-dark);
-        letter-spacing: -0.01em;
-    }
-
-    .minimal-card p {
-        font-size: 15px;
-        color: var(--apple-gray);
-        line-height: 1.5;
-        margin-bottom: 24px;
-        max-width: 300px;
-    }
-
-    .text-link {
-        color: var(--apple-blue);
-        text-decoration: none;
-        font-size: 15px;
-        font-weight: 500;
-        transition: opacity 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-    }
-
-    .text-link:hover {
-        opacity: 0.7;
-    }
-
-    .text-link::after {
-        content: "→";
-        transition: transform 0.2s;
-    }
-
-    .text-link:hover::after {
-        transform: translateX(4px);
-    }
-
-    /* Steps Minimal */
-    .steps-minimal {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 40px;
-        margin-top: 40px;
-        padding-top: 40px;
-        border-top: 1px solid #e5e5ea;
-    }
-
-    .step-item h4 {
-        font-size: 15px;
-        font-weight: 600;
-        color: var(--apple-dark);
-        margin-bottom: 8px;
-    }
-
-    .step-item p {
-        font-size: 13px;
-        color: var(--apple-gray);
-        line-height: 1.4;
-    }
-
-    .step-num {
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--apple-gray);
-        margin-bottom: 12px;
-        display: block;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .warning-minimal {
-        margin-top: 60px;
-        padding-top: 40px;
-        border-top: 1px solid #e5e5ea;
-        color: #85530b;
-        font-size: 14px;
-        display: flex;
-        gap: 12px;
-        align-items: flex-start;
-        animation: fadeInUp 0.6s ease-out 0.4s backwards;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="page-header" style="margin-bottom: 80px;">
-    <h1>Investigator</h1>
-    <p>Perform blinded age estimations.</p>
+<div class="page-header" style="border-bottom: 2px solid var(--text-color); padding-bottom: 20px; margin-bottom: 40px;">
+    <h1>PI Dashboard</h1>
+    <p>PRINCIPAL INVESTIGATOR ACCESS</p>
 </div>
 
 <!-- Main Actions Grid -->
-<div class="minimal-grid">
-    <div class="minimal-card">
-        <h3>Age Estimation</h3>
-        <p>Perform manual age assessments using standard dental development methodologies.</p>
-        <a href="/estimate_age" class="text-link">Start Estimation</a>
+<div
+    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 40px; margin-bottom: 60px;">
+    <div class="card">
+        <h3>Manaual Estimation</h3>
+        <p style="margin-bottom: 20px; font-size: 13px;">Perform manual age assessments using standard dental
+            development methodologies.</p>
+        <a href="/estimate_age" class="btn">START ESTIMATION &rarr;</a>
     </div>
 
-    <div class="minimal-card">
-        <h3>Blinded Cases</h3>
-        <p>View available blinded cases queued for your assessment.</p>
-        <a href="/estimate_age" class="text-link">View Queue</a>
+    <div class="card">
+        <h3>Blinded Queue</h3>
+        <p style="margin-bottom: 20px; font-size: 13px;">View available blinded cases queued for your assessment.</p>
+        <a href="/estimate_age" class="btn">VIEW QUEUE &rarr;</a>
     </div>
 </div>
 
 <!-- Methods Section -->
-<div style="margin-bottom: 80px; animation: fadeInUp 0.6s ease-out 0.2s backwards;">
-    <h2 style="font-size: 19px; font-weight: 600; margin-bottom: 40px; color: var(--apple-dark);">Methodologies</h2>
+<div style="margin-bottom: 60px;">
+    <h2 style="margin-bottom: 40px;">Methodologies</h2>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 60px;">
         <div>
-            <h4 style="font-size: 17px; font-weight: 600; margin-bottom: 8px;">AlQahtani Method</h4>
-            <p style="font-size: 15px; color: var(--apple-gray); line-height: 1.5;">
+            <h4 style="font-weight: 700; margin-bottom: 10px; text-transform: uppercase;">AlQahtani Method</h4>
+            <p style="font-size: 13px;">
                 Atlas-based approach using dental development stages for both primary and permanent dentition. Covers
                 ages 0-23 years.
             </p>
         </div>
         <div>
-            <h4 style="font-size: 17px; font-weight: 600; margin-bottom: 8px;">Demirjian Method</h4>
-            <p style="font-size: 15px; color: var(--apple-gray); line-height: 1.5;">
+            <h4 style="font-weight: 700; margin-bottom: 10px; text-transform: uppercase;">Demirjian Method</h4>
+            <p style="font-size: 13px;">
                 Scoring system based on 7 mandibular permanent teeth. Uses an 8-stage maturity scale (A-H) with weighted
                 scoring.
             </p>
@@ -143,38 +47,32 @@
 </div>
 
 <!-- Protocol Footer -->
-<div style="animation: fadeInUp 0.6s ease-out 0.3s backwards;">
-    <h2 style="font-size: 19px; font-weight: 600; margin-bottom: 8px; color: var(--apple-dark);">Assessment Protocol
-    </h2>
-    <div class="steps-minimal">
-        <div class="step-item">
-            <span class="step-num">Step 01</span>
-            <h4>Review OPG</h4>
-            <p>Examine the orthopantomogram for dental development.</p>
+<div style="border-top: 1px solid var(--border-color); padding-top: 40px;">
+    <h2 style="margin-bottom: 40px;">Assessment Protocol</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 40px;">
+        <div>
+            <span style="display: block; font-weight: 700; margin-bottom: 5px;">01 // REVIEW</span>
+            <p style="font-size: 12px;">Examine the orthopantomogram for dental development.</p>
         </div>
-        <div class="step-item">
-            <span class="step-num">Step 02</span>
-            <h4>Assess Stages</h4>
-            <p>Determine development stage for each tooth.</p>
+        <div>
+            <span style="display: block; font-weight: 700; margin-bottom: 5px;">02 // ASSESS</span>
+            <p style="font-size: 12px;">Determine development stage for each tooth.</p>
         </div>
-        <div class="step-item">
-            <span class="step-num">Step 03</span>
-            <h4>Calculate</h4>
-            <p>Apply methodology to estimate chronological age.</p>
+        <div>
+            <span style="display: block; font-weight: 700; margin-bottom: 5px;">03 // CALCULATE</span>
+            <p style="font-size: 12px;">Apply methodology to estimate chronological age.</p>
         </div>
-        <div class="step-item">
-            <span class="step-num">Step 04</span>
-            <h4>Submit</h4>
-            <p>Record final age estimation for blinded case.</p>
+        <div>
+            <span style="display: block; font-weight: 700; margin-bottom: 5px;">04 // SUBMIT</span>
+            <p style="font-size: 12px;">Record final age estimation for blinded case.</p>
         </div>
     </div>
 </div>
 
-<div class="warning-minimal">
-    <span style="font-size: 18px;">⚠️</span>
-    <p style="margin: 0; line-height: 1.5;">
-        <strong>Blinded Assessment:</strong> You will not have access to patient identities or actual ages during the
-        estimation process to ensure unbiased results.
+<div style="margin-top: 60px; padding: 20px; border: 1px solid var(--border-color); background: #fff;">
+    <p style="margin: 0; font-size: 12px; text-transform: uppercase;">
+        <strong>NOTE:</strong> You will not have access to patient identities or actual ages during the estimation
+        process.
     </p>
 </div>
 {% endblock %}

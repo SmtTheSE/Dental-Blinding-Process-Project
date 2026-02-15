@@ -1,125 +1,81 @@
-<!-- Search Form -->
-<form method="GET" action="/analysis">
-    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-        <input 
-            type="text" 
-            name="search" 
-            placeholder="Search by Patient ID, Name, or Codes..." 
-            value="{{ search_query or '' }}"
-            style="flex: 1; min-width: 200px;"
-        >
-        <button type="submit" class="btn">Search</button>
-        {% if search_query %}
-        <a href="/analysis" class="btn btn-secondary">Clear</a>
-        {% endif %}
-    </div>
-</form>
-
-<div class="search-loading">
-    <p>Loading...</p>
-</div>
-
-{% if accuracy_chart %}
-<div style="background: white; padding: 1.5rem; border-radius: var(--border-radius); box-shadow: var(--box-shadow); margin-bottom: 2rem;">
-    <h3>Age Distribution</h3>
-    <img src="data:image/png;base64,{{ accuracy_chart }}" alt="Age Distribution Chart" style="max-width: 100%; height: auto;">
-</div>
-{% else %}
-<div style="background: white; padding: 2rem; text-align: center; border-radius: var(--border-radius); box-shadow: var(--box-shadow); margin-bottom: 2rem;">
-    <h3>No Data Available</h3>
-    <p>There is no estimation data available for analysis yet. Please ensure patients have been added and age estimations have been performed.</p>
-</div>
-{% endif %}
-
-{% if comparison_chart %}
-<div style="background: white; padding: 1.5rem; border-radius: var(--border-radius); box-shadow: var(--box-shadow); margin-bottom: 2rem;">
-    <h3>Method Comparison</h3>
-    <img src="data:image/png;base64,{{ comparison_chart }}" alt="Method Comparison Chart" style="max-width: 100%; height: auto;">
-</div>
-{% endif %}
-
-<div id="search-results-container">
-    {% if search_query %}
-    <div class="search-results-info">
-        Search results for: <strong>"{{ search_query }}"</strong> ({{ patients.total }} patient{{ patients.total != 1 and 's' or '' }})
+<!-- Charts Section -->
+{% if accuracy_chart or comparison_chart %}
+<div
+    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 40px; margin-bottom: 60px;">
+    {% if accuracy_chart %}
+    <div class="card">
+        <h3>Accuracy Distribution</h3>
+        <img src="data:image/png;base64,{{ accuracy_chart }}" alt="Accuracy Chart"
+            style="width: 100%; height: auto; filter: grayscale(100%);">
     </div>
     {% endif %}
 
+    {% if comparison_chart %}
+    <div class="card">
+        <h3>Method Comparison</h3>
+        <img src="data:image/png;base64,{{ comparison_chart }}" alt="Comparison Chart"
+            style="width: 100%; height: auto; filter: grayscale(100%);">
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Data Table -->
+<div>
+    <h2>Detailed Records</h2>
     {% if results %}
-    <table>
-        <tr>
-            <th>Patient ID</th>
-            <th>Name</th>
-            <th>Actual Age</th>
-            <th>Sex</th>
-            <th>OPG Image</th>
-            <th>Code A (AlQahtani)</th>
-            <th>Code B (Demirjian)</th>
-            <th>AlQahtani Estimation</th>
-            <th>Demirjian Estimation</th>
-        </tr>
-        {% for result in results %}
-        <tr>
-            <td>{{ result.patient_id }}</td>
-            <td>{{ result.name or 'N/A' }}</td>
-            <td>{{ result.actual_age }}</td>
-            <td>{{ result.sex }}</td>
-            <td>
-                {% if result.opg_link %}
-                <img src="{{ result.opg_link }}" alt="OPG Image" style="max-width: 100px; max-height: 100px; border-radius: 4px;">
-                {% else %}
-                No image
-                {% endif %}
-            </td>
-            <td>{{ result.code_a or 'Not assigned' }}</td>
-            <td>{{ result.code_b or 'Not assigned' }}</td>
-            <td>{{ result.alqahtani_estimated_age or 'Not estimated' }}</td>
-            <td>{{ result.demirjian_estimated_age or 'Not estimated' }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-    
-    <!-- Pagination Controls -->
-    {% if patients.pages > 1 %}
-    <div class="pagination">
-        <!-- Previous button -->
-        {% if patients.has_prev %}
-            <a href="{{ url_for('main.analysis', page=patients.prev_num, search=search_query) }}" class="btn btn-secondary">&laquo; Previous</a>
-        {% else %}
-            <span class="btn btn-secondary disabled">&laquo; Previous</span>
-        {% endif %}
-        
-        <!-- Page numbers -->
-        {% for page_num in patients.iter_pages() %}
-            {% if page_num %}
-                {% if page_num != patients.page %}
-                    <a href="{{ url_for('main.analysis', page=page_num, search=search_query) }}" class="btn btn-secondary">{{ page_num }}</a>
-                {% else %}
-                    <span class="btn active">{{ page_num }}</span>
-                {% endif %}
-            {% else %}
-                <span class="ellipsis">…</span>
-            {% endif %}
-        {% endfor %}
-        
-        <!-- Next button -->
-        {% if patients.has_next %}
-            <a href="{{ url_for('main.analysis', page=patients.next_num, search=search_query) }}" class="btn btn-secondary">Next &raquo;</a>
-        {% else %}
-            <span class="btn btn-secondary disabled">Next &raquo;</span>
-        {% endif %}
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Actual Age</th>
+                    <th>Sex</th>
+                    <th>AlQahtani Est.</th>
+                    <th>Demirjian Est.</th>
+                    <th>Difference</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in results %}
+                <tr>
+                    <td>
+                        <div style="font-weight: 700;">{{ result.patient_id }}</div>
+                        <div style="font-size: 12px; color: #666;">{{ result.name or '' }}</div>
+                    </td>
+                    <td>{{ result.actual_age }}</td>
+                    <td style="text-transform: uppercase;">{{ result.sex }}</td>
+                    <td>{{ result.alqahtani_estimated_age or '—' }}</td>
+                    <td>{{ result.demirjian_estimated_age or '—' }}</td>
+                    <td>
+                        <!-- Calculate difference if possible or just show nothing for now -->
+                        —
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-    {% endif %}
-    
-    {% else %}
-    <div style="background: white; padding: 2rem; text-align: center; border-radius: var(--border-radius); box-shadow: var(--box-shadow);">
-        <h3>No Analysis Data Available</h3>
-        <p>{% if search_query %}No patients match your search query: <strong>"{{ search_query }}"</strong>.{% else %}No patient data has been entered yet.{% endif %}</p>
-    </div>
-    {% endif %}
-</div>
 
-<div style="margin-top: 2rem; display: flex; gap: 1rem; flex-wrap: wrap;">
-    <a href="/export_patients" class="btn">Export to Excel</a>
-    <a href="/" class="btn btn-secondary">Home</a>
+    <!-- Pagination -->
+    {% if patients.pages > 1 %}
+    <div
+        style="display: flex; justify-content: center; gap: 20px; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+        {% if patients.has_prev %}
+        <a href="{{ url_for('main.analysis', page=patients.prev_num, search=search_query) }}">&larr; Previous</a>
+        {% endif %}
+
+        <span>Page {{ patients.page }} / {{ patients.pages }}</span>
+
+        {% if patients.has_next %}
+        <a href="{{ url_for('main.analysis', page=patients.next_num, search=search_query) }}">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div style="padding: 40px; text-align: center; border: 1px dashed var(--border-color);">
+        <p>NO ANALYSIS DATA AVAILABLE.</p>
+    </div>
+    {% endif %}
 </div>

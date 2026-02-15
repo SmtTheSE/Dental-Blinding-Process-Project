@@ -2,211 +2,108 @@
 
 {% block title %}Analysis Results - Dental Age Estimation System{% endblock %}
 
-{% block extra_css %}
-<style>
-    /* Minimalist Search */
-    .search-container {
-        margin-bottom: 40px;
-        animation: fadeInUp 0.6s ease-out backwards;
-    }
-
-    .search-input {
-        width: 100%;
-        max-width: 400px;
-        padding: 12px 0;
-        border: none;
-        border-bottom: 1px solid #d2d2d7;
-        font-size: 24px;
-        font-weight: 600;
-        color: var(--apple-dark);
-        background: transparent;
-        transition: border-color 0.2s;
-        border-radius: 0;
-    }
-
-    .search-input:focus {
-        outline: none;
-        border-color: var(--apple-blue);
-        box-shadow: none;
-    }
-
-    .search-input::placeholder {
-        color: #d2d2d7;
-        font-weight: 500;
-    }
-
-    /* Table Minimal */
-    .table-minimal {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .table-minimal th {
-        text-align: left;
-        padding: 16px 0;
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--apple-gray);
-        text-transform: uppercase;
-        border-bottom: 1px solid #e5e5ea;
-        background: transparent;
-    }
-
-    .table-minimal td {
-        padding: 20px 0;
-        border-bottom: 1px solid #f5f5f7;
-        font-size: 15px;
-        color: var(--apple-dark);
-    }
-
-    .table-minimal tr:last-child td {
-        border-bottom: none;
-    }
-
-    /* Graphs Layout */
-    .charts-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 60px;
-        margin-bottom: 80px;
-    }
-
-    .chart-item h4 {
-        font-size: 17px;
-        font-weight: 600;
-        margin-bottom: 24px;
-        color: var(--apple-dark);
-    }
-
-    .chart-img {
-        width: 100%;
-        height: auto;
-        border-radius: 12px;
-        /* No shadow for minimalist look, just pure content */
-    }
-
-    /* Links */
-    .action-link {
-        color: var(--apple-blue);
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        margin-right: 20px;
-    }
-
-    .action-link:hover {
-        opacity: 0.7;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="page-header" style="margin-bottom: 60px;">
-    <h1>Analysis</h1>
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 24px;">
-        <p style="margin: 0; max-width: 500px;">Comparative results of age estimations vs actual age.</p>
-
-        <!-- Search Inline -->
-        <form method="GET" action="/analysis"
-            style="display: flex; align-items: center; border-bottom: 1px solid #d2d2d7;">
-            <span style="color: #d2d2d7; margin-right: 8px;">🔍</span>
-            <input type="text" name="search" placeholder="Search patients" value="{{ search_query or '' }}"
-                style="border: none; background: transparent; padding: 8px 0; font-size: 15px; width: 200px; outline: none;">
-            {% if search_query %}
-            <a href="/analysis"
-                style="color: var(--apple-gray); text-decoration: none; font-size: 18px; margin-left: 8px;">×</a>
-            {% endif %}
-        </form>
+<div class="page-header"
+    style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; border-bottom: 2px solid var(--text-color); padding-bottom: 20px;">
+    <div>
+        <h1 style="margin: 0;">Analysis</h1>
+        <p style="margin: 0; font-size: 14px;">Comparative Results & Statistics</p>
     </div>
+
+    <!-- Search Inline -->
+    <form method="GET" action="/analysis" style="display: flex; align-items: center; gap: 10px;">
+        <input type="text" name="search" placeholder="SEARCH PATIENT..." value="{{ search_query or '' }}"
+            style="width: 250px; text-transform: uppercase;">
+        {% if search_query %}
+        <a href="/analysis" class="btn" style="padding: 10px;">X</a>
+        {% endif %}
+    </form>
 </div>
 
 <!-- Charts Section -->
 {% if accuracy_chart or comparison_chart %}
-<div class="charts-grid" style="animation: fadeInUp 0.6s ease-out 0.1s backwards;">
+<div
+    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 40px; margin-bottom: 60px;">
     {% if accuracy_chart %}
-    <div class="chart-item">
-        <h4>Accuracy Distribution</h4>
-        <img src="data:image/png;base64,{{ accuracy_chart }}" alt="Accuracy Chart" class="chart-img">
+    <div class="card">
+        <h3>Accuracy Distribution</h3>
+        <img src="data:image/png;base64,{{ accuracy_chart }}" alt="Accuracy Chart"
+            style="width: 100%; height: auto; filter: grayscale(100%);">
     </div>
     {% endif %}
 
     {% if comparison_chart %}
-    <div class="chart-item">
-        <h4>Method Comparison</h4>
-        <img src="data:image/png;base64,{{ comparison_chart }}" alt="Comparison Chart" class="chart-img">
+    <div class="card">
+        <h3>Method Comparison</h3>
+        <img src="data:image/png;base64,{{ comparison_chart }}" alt="Comparison Chart"
+            style="width: 100%; height: auto; filter: grayscale(100%);">
     </div>
     {% endif %}
 </div>
 {% endif %}
 
 <!-- Data Table -->
-<div style="animation: fadeInUp 0.6s ease-out 0.2s backwards;">
+<div>
+    <h2>Detailed Records</h2>
     {% if results %}
-    <table class="table-minimal">
-        <thead>
-            <tr>
-                <th>Patient</th>
-                <th>Actual Age</th>
-                <th>Sex</th>
-                <th>AlQahtani est.</th>
-                <th>Demirjian est.</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for result in results %}
-            <tr>
-                <td>
-                    <div style="font-weight: 500;">{{ result.patient_id }}</div>
-                    <div style="font-size: 13px; color: var(--apple-gray);">{{ result.name or '' }}</div>
-                </td>
-                <td>{{ result.actual_age }}</td>
-                <td style="text-transform: capitalize;">{{ result.sex }}</td>
-                <td>
-                    {% if result.alqahtani_estimated_age %}
-                    {{ result.alqahtani_estimated_age }}
-                    {% else %}
-                    <span style="color: var(--apple-gray);">—</span>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if result.demirjian_estimated_age %}
-                    {{ result.demirjian_estimated_age }}
-                    {% else %}
-                    <span style="color: var(--apple-gray);">—</span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Actual Age</th>
+                    <th>Sex</th>
+                    <th>AlQahtani Est.</th>
+                    <th>Demirjian Est.</th>
+                    <th>Difference</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in results %}
+                <tr>
+                    <td>
+                        <div style="font-weight: 700;">{{ result.patient_id }}</div>
+                        <div style="font-size: 12px; color: #666;">{{ result.name or '' }}</div>
+                    </td>
+                    <td>{{ result.actual_age }}</td>
+                    <td style="text-transform: uppercase;">{{ result.sex }}</td>
+                    <td>{{ result.alqahtani_estimated_age or '—' }}</td>
+                    <td>{{ result.demirjian_estimated_age or '—' }}</td>
+                    <td>
+                        <!-- Calculate difference if possible or just show nothing for now -->
+                        —
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
-    <!-- Minimal Pagination -->
+    <!-- Pagination -->
     {% if patients.pages > 1 %}
-    <div style="margin-top: 40px; display: flex; gap: 20px; justify-content: center;">
+    <div
+        style="display: flex; justify-content: center; gap: 20px; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color);">
         {% if patients.has_prev %}
-        <a href="{{ url_for('main.analysis', page=patients.prev_num, search=search_query) }}"
-            class="action-link">Previous</a>
+        <a href="{{ url_for('main.analysis', page=patients.prev_num, search=search_query) }}">&larr; Previous</a>
         {% endif %}
 
-        <span style="color: var(--apple-gray); font-size: 13px;">Page {{ patients.page }} of {{ patients.pages }}</span>
+        <span>Page {{ patients.page }} / {{ patients.pages }}</span>
 
         {% if patients.has_next %}
-        <a href="{{ url_for('main.analysis', page=patients.next_num, search=search_query) }}"
-            class="action-link">Next</a>
+        <a href="{{ url_for('main.analysis', page=patients.next_num, search=search_query) }}">Next &rarr;</a>
         {% endif %}
     </div>
     {% endif %}
 
     {% else %}
-    <div style="padding: 60px 0; text-align: center; color: var(--apple-gray);">
-        <p>No analysis data available yet.</p>
+    <div style="padding: 40px; text-align: center; border: 1px dashed var(--border-color);">
+        <p>NO ANALYSIS DATA AVAILABLE.</p>
     </div>
     {% endif %}
 </div>
 
 <!-- Footer Links -->
-<div style="margin-top: 80px; text-align: center; display: flex; gap: 24px; justify-content: center;">
-    <a href="/export_patients" class="action-link">Export Data (Excel)</a>
-    <a href="/" class="action-link">Dashboard</a>
+<div style="margin-top: 60px; text-align: center;">
+    <a href="/export_patients" class="btn">Download Excel Report</a>
 </div>
 {% endblock %}

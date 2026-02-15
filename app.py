@@ -81,11 +81,13 @@ def create_app(config_name='default'):
     supabase_domain = supabase_url.split('/')[0] if '/' in supabase_url else supabase_url
     
     csp = {
-        'default-src': "'self'",
+        'default-src': ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
         'script-src': ["'self'", "'unsafe-inline'"],
-        'style-src': ["'self'", "'unsafe-inline'"],
+        'style-src': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        'style-src-elem': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        'font-src': ["'self'", "https://fonts.gstatic.com"],
         'img-src': ["'self'", "data:", f"https://{supabase_domain}" if supabase_domain else "https:"],
-        'connect-src': ["'self'", f"https://{supabase_domain}" if supabase_domain else "https:"]
+        'connect-src': ["'self'", f"https://{supabase_domain}" if supabase_domain else "https:", "https://fonts.googleapis.com", "https://fonts.gstatic.com"]
     }
     
     from flask_talisman import Talisman
@@ -106,6 +108,19 @@ def create_app(config_name='default'):
         # Use the generate_csrf_token function from routes instead of auth
         from routes import generate_csrf_token
         return dict(csrf_token=generate_csrf_token())
+
+    @app.context_processor
+    def inject_user():
+        """Inject current_user into all templates to mimic Flask-Login"""
+        class UserWrapper:
+            def __init__(self):
+                self.id = session.get('user_id')
+                self.username = session.get('username')
+                self.role = session.get('role')
+                self.is_authenticated = bool(self.id)
+                self.is_anonymous = not bool(self.id)
+        
+        return dict(current_user=UserWrapper())
     
     # Health check endpoint for Render
     @app.route('/health')

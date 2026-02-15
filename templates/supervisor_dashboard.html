@@ -2,153 +2,59 @@
 
 {% block title %}Supervisor Dashboard - Dental Age Estimation System{% endblock %}
 
-{% block extra_css %}
-<style>
-    /* Minimalist Grid */
-    .minimal-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 60px;
-        margin-bottom: 80px;
-        animation: fadeInUp 0.6s ease-out 0.1s backwards;
-    }
-
-    .minimal-card h3 {
-        font-size: 21px;
-        font-weight: 600;
-        margin-bottom: 12px;
-        color: var(--apple-dark);
-        letter-spacing: -0.01em;
-    }
-
-    .minimal-card p {
-        font-size: 15px;
-        color: var(--apple-gray);
-        line-height: 1.5;
-        margin-bottom: 24px;
-        max-width: 300px;
-    }
-
-    .text-link {
-        color: var(--apple-blue);
-        text-decoration: none;
-        font-size: 15px;
-        font-weight: 500;
-        transition: opacity 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-    }
-
-    .text-link:hover {
-        opacity: 0.7;
-    }
-
-    .text-link::after {
-        content: "→";
-        transition: transform 0.2s;
-    }
-
-    .text-link:hover::after {
-        transform: translateX(4px);
-    }
-
-    /* Steps Minimal */
-    .steps-minimal {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 40px;
-        margin-top: 40px;
-        padding-top: 40px;
-        border-top: 1px solid #e5e5ea;
-    }
-
-    .step-item h4 {
-        font-size: 15px;
-        font-weight: 600;
-        color: var(--apple-dark);
-        margin-bottom: 8px;
-    }
-
-    .step-item p {
-        font-size: 13px;
-        color: var(--apple-gray);
-        line-height: 1.4;
-    }
-
-    .step-num {
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--apple-gray);
-        margin-bottom: 12px;
-        display: block;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="page-header" style="margin-bottom: 80px;">
-    <h1>Supervisor</h1>
-    <p>Manage patients and oversee the blinding process.</p>
+<div class="page-header" style="border-bottom: 2px solid var(--text-color); padding-bottom: 20px; margin-bottom: 40px;">
+    <h1>Supervisor Dashboard</h1>
+    <p>OVERVIEW & STATISTICS</p>
 </div>
 
-<!-- Main Actions Grid -->
-<div class="minimal-grid">
-    <div class="minimal-card">
-        <h3>Patient Management</h3>
-        <p>Add new research participants, manage existing records, and upload OPG images.</p>
-        <a href="/patients" class="text-link">Manage Patients</a>
+<div
+    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 40px; margin-bottom: 60px;">
+    <div class="card">
+        <h3>Total Patients</h3>
+        <div style="font-size: 48px; font-weight: 700; margin-top: 10px;">{{ total_patients }}</div>
     </div>
-
-    <div class="minimal-card">
-        <h3>Blinded Data</h3>
-        <p>View randomized patient codes and monitor the blinding status of the database.</p>
-        <a href="/blinded_data" class="text-link">View Data</a>
+    <div class="card">
+        <h3>Pending Estimations</h3>
+        <div style="font-size: 48px; font-weight: 700; margin-top: 10px;">{{ pending_estimations }}</div>
     </div>
-
-    <div class="minimal-card">
-        <h3>Statistical Analysis</h3>
-        <p>Analyze age estimation results, compare methods, and generate reports.</p>
-        <a href="/analysis" class="text-link">View Analysis</a>
+    <div class="card">
+        <h3>Completed Analysis</h3>
+        <div style="font-size: 48px; font-weight: 700; margin-top: 10px;">{{ completed_analysis }}</div>
     </div>
 </div>
 
-<!-- Quick Actions (Inline) -->
-<div style="margin-bottom: 80px; animation: fadeInUp 0.6s ease-out 0.2s backwards;">
-    <h2 style="font-size: 19px; font-weight: 600; margin-bottom: 24px; color: var(--apple-dark);">Quick Actions</h2>
-    <div style="display: flex; gap: 32px; flex-wrap: wrap;">
-        <a href="/patients" class="text-link" style="color: var(--apple-dark);">+ New Patient</a>
-        <a href="/assign_codes" class="text-link" style="color: var(--apple-dark);">Assign Codes</a>
-        <a href="/analysis" class="text-link" style="color: var(--apple-dark);">Generate Report</a>
-    </div>
+<div style="margin-bottom: 60px;">
+    <h2>Recent Activity</h2>
+    {% if recent_activities %}
+    <table>
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for activity in recent_activities %}
+            <tr>
+                <td style="font-family: monospace;">{{ activity.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ activity.user.username }}</td>
+                <td style="text-transform: uppercase;">{{ activity.action }}</td>
+                <td>{{ activity.details }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="text-align: center; color: var(--apple-gray); padding: 40px; border: 1px dashed var(--border-color);">NO
+        RECENT ACTIVITY.</p>
+    {% endif %}
 </div>
 
-<!-- Protocol Footer -->
-<div style="animation: fadeInUp 0.6s ease-out 0.3s backwards;">
-    <h2 style="font-size: 19px; font-weight: 600; margin-bottom: 8px; color: var(--apple-dark);">Research Protocol</h2>
-    <div class="steps-minimal">
-        <div class="step-item">
-            <span class="step-num">Step 01</span>
-            <h4>Add Patients</h4>
-            <p>Register study patients with demographic data and OPG images.</p>
-        </div>
-        <div class="step-item">
-            <span class="step-num">Step 02</span>
-            <h4>Assign Codes</h4>
-            <p>Generate randomized codes for double-blind evaluation.</p>
-        </div>
-        <div class="step-item">
-            <span class="step-num">Step 03</span>
-            <h4>Monitor</h4>
-            <p>Track estimation completion by the Principal Investigator.</p>
-        </div>
-        <div class="step-item">
-            <span class="step-num">Step 04</span>
-            <h4>Analyze</h4>
-            <p>Compare estimations with actual ages and generate statistics.</p>
-        </div>
-    </div>
+<div style="display: flex; gap: 20px; justify-content: center;">
+    <a href="{{ url_for('main.manage_patients') }}" class="btn">Manage Patients</a>
+    <a href="{{ url_for('main.analysis') }}" class="btn">View Analysis</a>
 </div>
 {% endblock %}

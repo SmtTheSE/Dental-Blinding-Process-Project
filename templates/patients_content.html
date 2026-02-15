@@ -1,183 +1,119 @@
-<!-- CSV/Excel Import Form -->
-<div class="card">
-    <h3>Import Patients from File</h3>
-    <p>Upload a CSV or Excel file to import multiple patients at once. The system will automatically skip patients that
-        already exist in the database.</p>
-
-    <div class="info-box">
-        <strong>Supported Formats:</strong>
-        <ul>
-            <li><strong>Simple Format (Recommended):</strong> ID, Name, Actual Age, Sex</li>
-            <li><strong>Full Format:</strong> ID, Name, Age, Sex, OPG, A code, D code, A Age, D Age, Actual age</li>
-        </ul>
+<!-- Forms Section -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 60px; margin-bottom: 60px;">
+    <!-- Add Patient -->
+    <div>
+        <h2>Add Patient</h2>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="form-group">
+                <label>Patient ID</label>
+                <input type="text" name="patient_id" required placeholder="P-001">
+            </div>
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" name="name" placeholder="Optional">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="form-group">
+                    <label>Age</label>
+                    <input type="number" step="0.1" name="actual_age" required placeholder="0.0">
+                </div>
+                <div class="form-group">
+                    <label>Sex</label>
+                    <select name="sex">
+                        <option value="male">MALE</option>
+                        <option value="female">FEMALE</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">+ Add Record</button>
+        </form>
     </div>
 
-    <div class="warning-box">
-        <strong>Note:</strong> Images cannot be imported directly from Excel files. Please upload images separately
-        after importing patient data.
+    <!-- Import -->
+    <div>
+        <h2>Import Data</h2>
+        <p style="margin-bottom: 20px; font-size: 13px;">Upload CSV/Excel (Format: ID, Name, Age, Sex)</p>
+
+        <form method="POST" enctype="multipart/form-data" class="card">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="form-group">
+                <input type="file" name="csv_file" accept=".csv,.xlsx,.xls" onchange="this.form.submit()">
+            </div>
+        </form>
     </div>
-
-    <form method="POST" enctype="multipart/form-data">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <div class="form-group">
-            <label for="csv_file">Select CSV or Excel File:</label>
-            <input type="file" id="csv_file" name="csv_file" accept=".csv,.xlsx,.xls" required>
-            <small>Supported formats: CSV, XLSX, XLS</small>
-        </div>
-
-        <button type="submit" class="btn">Upload File</button>
-    </form>
 </div>
 
-<!-- Manual Patient Creation Form -->
-<div class="card">
-    <h3>Add New Patient</h3>
-
-    <form method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <div class="form-group">
-            <label for="patient_id">Patient ID:</label>
-            <input type="text" id="patient_id" name="patient_id" required>
-        </div>
-
-        <div class="form-group">
-            <label for="name">Name:</label>
-            <input type="text" id="name" name="name">
-        </div>
-
-        <div class="form-group">
-            <label for="actual_age">Actual Age:</label>
-            <input type="number" step="0.1" id="actual_age" name="actual_age" required>
-        </div>
-
-        <div class="form-group">
-            <label for="sex">Sex:</label>
-            <select id="sex" name="sex">
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-            </select>
-        </div>
-
-        <button type="submit" class="btn">Add Patient</button>
-    </form>
-</div>
-
-<!-- Search Form -->
-<form method="GET" action="/patients">
-    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-        <input type="text" name="search" placeholder="Search by Patient ID, Name, or Codes..."
-            value="{{ search_query or '' }}" style="flex: 1; min-width: 200px;">
-        <button type="submit" class="btn">Search</button>
-        {% if search_query %}
-        <a href="/patients" class="btn btn-secondary">Clear</a>
-        {% endif %}
-    </div>
-</form>
-
-<div class="search-loading">
-    <p>Searching...</p>
-</div>
-
-<div id="search-results-container">
-    {% if search_query %}
-    <div class="search-results-info">
-        Search results for: <strong>"{{ search_query }}"</strong> ({{ patients.total }} patient{{ patients.total != 1
-        and 's' or '' }})
-    </div>
-    {% endif %}
+<!-- Patients List -->
+<div>
+    <h2>Database Records</h2>
 
     {% if patients.items %}
-    <div class="table-container">
+    <div style="overflow-x: auto;">
         <table>
-            <tr>
-                <th>Patient ID</th>
-                <th>Name</th>
-                <th>Actual Age</th>
-                <th>Sex</th>
-                <th>OPG Image</th>
-                <th>Code A (AlQahtani)</th>
-                <th>Code B (Demirjian)</th>
-                <th>Actions</th>
-            </tr>
-            {% for patient in patients.items %}
-            <tr>
-                <td>{{ patient.patient_id }}</td>
-                <td>{{ patient.name or 'N/A' }}</td>
-                <td>{{ patient.actual_age }}</td>
-                <td>{{ patient.sex }}</td>
-                <td style="text-align: center; width: 70px;">
-                    {% if patient.opg_link %}
-                    <img src="{{ patient.opg_link }}" alt="OPG" class="opg-thumbnail">
-                    {% else %}
-                    <span style="font-size: 11px; color: var(--apple-gray);">No image</span>
-                    {% endif %}
-                </td>
-                <td>{{ patient.code_a or 'Not assigned' }}</td>
-                <td>{{ patient.code_b or 'Not assigned' }}</td>
-                <td>
-                    <div class="action-buttons">
-                        <a href="/upload_opg/{{ patient.id }}" class="btn btn-success">Upload OPG</a>
-                        <a href="/patients/update/{{ patient.id }}" class="btn btn-warning">Update</a>
-                        <form method="POST" action="/patients/delete/{{ patient.id }}" style="display: inline;">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Age</th>
+                    <th>Sex</th>
+                    <th>OPG</th>
+                    <th>Blind A</th>
+                    <th>Blind B</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for patient in patients.items %}
+                <tr>
+                    <td style="font-weight: 700;">{{ patient.patient_id }}</td>
+                    <td>{{ patient.name or '—' }}</td>
+                    <td>{{ patient.actual_age }}</td>
+                    <td style="text-transform: uppercase;">{{ patient.sex }}</td>
+                    <td>
+                        {% if patient.opg_link %}
+                        <span style="color: var(--success-color);">[YES]</span>
+                        {% else %}
+                        <span style="color: var(--error-color);">[NO]</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-family: monospace;">{{ patient.code_a or '—' }}</td>
+                    <td style="font-family: monospace;">{{ patient.code_b or '—' }}</td>
+                    <td style="text-align: right;">
+                        <a href="/upload_opg/{{ patient.id }}" style="margin-right: 10px;">[UPLOAD]</a>
+                        <a href="/patients/update/{{ patient.id }}" style="margin-right: 10px;">[EDIT]</a>
+                        <form method="POST" action="/patients/delete/{{ patient.id }}" style="display: inline;"
+                            onsubmit="return confirm('Confirm delete?');">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                            <button type="submit" class="btn btn-danger">Delete</button>
+                            <button type="submit"
+                                style="background: none; border: none; color: var(--error-color); cursor: pointer; font-family: inherit; font-size: inherit; padding: 0;">[DEL]</button>
                         </form>
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
     </div>
 
-    <!-- Pagination Controls -->
+    <!-- Pagination -->
     {% if patients.pages > 1 %}
-    <div class="pagination">
-        <!-- Previous button -->
+    <div
+        style="display: flex; justify-content: center; gap: 20px; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color);">
         {% if patients.has_prev %}
-        <a href="{{ url_for('main.manage_patients', page=patients.prev_num, search=search_query) }}"
-            class="btn btn-secondary">&laquo; Previous</a>
-        {% else %}
-        <span class="btn btn-secondary disabled">&laquo; Previous</span>
+        <a href="{{ url_for('main.manage_patients', page=patients.prev_num, search=search_query) }}">&larr; Previous</a>
         {% endif %}
 
-        <!-- Page numbers -->
-        {% for page_num in patients.iter_pages() %}
-        {% if page_num %}
-        {% if page_num != patients.page %}
-        <a href="{{ url_for('main.manage_patients', page=page_num, search=search_query) }}" class="btn btn-secondary">{{
-            page_num }}</a>
-        {% else %}
-        <span class="btn active">{{ page_num }}</span>
-        {% endif %}
-        {% else %}
-        <span class="ellipsis">…</span>
-        {% endif %}
-        {% endfor %}
+        <span>Page {{ patients.page }} / {{ patients.pages }}</span>
 
-        <!-- Next button -->
         {% if patients.has_next %}
-        <a href="{{ url_for('main.manage_patients', page=patients.next_num, search=search_query) }}"
-            class="btn btn-secondary">Next &raquo;</a>
-        {% else %}
-        <span class="btn btn-secondary disabled">Next &raquo;</span>
+        <a href="{{ url_for('main.manage_patients', page=patients.next_num, search=search_query) }}">Next &rarr;</a>
         {% endif %}
     </div>
     {% endif %}
 
     {% else %}
-    <div
-        style="background: white; padding: 2rem; text-align: center; border-radius: var(--border-radius); box-shadow: var(--box-shadow);">
-        <h3>No Patients Found</h3>
-        <p>{% if search_query %}No patients match your search query: <strong>"{{ search_query }}"</strong>.{% else %}Add
-            patients using the form above.{% endif %}</p>
+    <div style="padding: 40px; text-align: center; border: 1px dashed var(--border-color);">
+        <p>NO RECORDS FOUND.</p>
     </div>
     {% endif %}
-</div>
-
-<div style="margin-top: 2rem; display: flex; gap: 1rem; flex-wrap: wrap;">
-    <a href="/assign_codes" class="btn">Assign Codes</a>
-    <a href="/blinded_data" class="btn">View Blinded Data</a>
-    <a href="/analysis" class="btn">Analysis Results</a>
-    <a href="/export_patients" class="btn">Export Patients to Excel</a>
-    <a href="/" class="btn btn-secondary">Home</a>
 </div>

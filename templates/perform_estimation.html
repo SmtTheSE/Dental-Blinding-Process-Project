@@ -2,293 +2,113 @@
 
 {% block title %}Perform Estimation - Dental Age Estimation System{% endblock %}
 
-{% block extra_css %}
-<style>
-    /* Full Page Layout */
-    .estimation-container {
-        display: grid;
-        grid-template-columns: 1fr 350px;
-        gap: 0;
-        height: calc(100vh - 80px);
-        /* Subtract header height approx */
-        margin: -20px;
-        /* Counteract body padding from base.html if needed, usually we might need a specific layout class */
-    }
-
-    /* Override base container max-width if it exists, or specialized layout */
-
-    .opg-section {
-        background: #000;
-        position: relative;
-        overflow: hidden;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .sidebar-section {
-        background: #fff;
-        border-left: 1px solid #e5e5ea;
-        padding: 40px;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-    }
-
-    /* OPG Viewer */
-    #opg-image-wrapper {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: grab;
-    }
-
-    #opg-image-wrapper.grabbing {
-        cursor: grabbing;
-    }
-
-    #opg-image {
-        max-width: 100%;
-        max-height: 100%;
-        transition: transform 0.1s ease-out;
-        user-select: none;
-        -webkit-user-drag: none;
-    }
-
-    .viewer-controls {
-        position: absolute;
-        bottom: 24px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(40, 40, 40, 0.8);
-        backdrop-filter: blur(20px);
-        padding: 8px 16px;
-        border-radius: 980px;
-        display: flex;
-        gap: 16px;
-        align-items: center;
-        color: white;
-        z-index: 10;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .control-btn {
-        background: none;
-        border: none;
-        color: white;
-        font-size: 18px;
-        cursor: pointer;
-        opacity: 0.8;
-        transition: opacity 0.2s;
-        padding: 4px;
-    }
-
-    .control-btn:hover {
-        opacity: 1;
-    }
-
-    /* Sidebar Form */
-    .case-info {
-        margin-bottom: 40px;
-        padding-bottom: 24px;
-        border-bottom: 1px solid #e5e5ea;
-    }
-
-    .info-row {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 12px;
-        font-size: 14px;
-    }
-
-    .info-label {
-        color: var(--apple-gray);
-    }
-
-    .info-value {
-        font-weight: 600;
-        color: var(--apple-dark);
-    }
-
-    .estimation-form-group {
-        margin-bottom: 40px;
-    }
-
-    .estimation-input {
-        width: 100%;
-        padding: 16px 0;
-        border: none;
-        border-bottom: 1px solid #d2d2d7;
-        font-size: 32px;
-        font-weight: 600;
-        color: var(--apple-dark);
-        background: transparent;
-        border-radius: 0;
-        outline: none;
-    }
-
-    .estimation-input:focus {
-        border-color: var(--apple-blue);
-    }
-
-    .submit-btn {
-        width: 100%;
-        background: var(--apple-blue);
-        color: white;
-        padding: 16px;
-        border-radius: 12px;
-        font-size: 16px;
-        font-weight: 600;
-        border: none;
-        cursor: pointer;
-        transition: transform 0.2s;
-    }
-
-    .submit-btn:hover {
-        background: var(--apple-blue-hover);
-    }
-
-    .back-link {
-        display: inline-flex;
-        align-items: center;
-        color: var(--apple-blue);
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        margin-bottom: 32px;
-    }
-
-    @media (max-width: 900px) {
-        .estimation-container {
-            grid-template-columns: 1fr;
-            grid-template-rows: 50vh 1fr;
-            height: auto;
-        }
-
-        .sidebar-section {
-            border-left: none;
-            border-top: 1px solid #e5e5ea;
-            height: auto;
-        }
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<!-- Remove standard container constraints for full layout if possible, 
-     or implemented inline here. If base.html forces padding, we might see it.
-     Ideally, we override standard container for this page. -->
+<!-- Full Width Layout for Estimation -->
+<div
+    style="display: grid; grid-template-columns: 1fr 300px; gap: 20px; height: 80vh; border: 1px solid var(--border-color);">
 
-<div class="estimation-container">
-    <!-- OPG Viewer Section -->
-    <div class="opg-section">
+    <!-- OPG Viewer -->
+    <div
+        style="background: #000; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
         {% if opg %}
-        <div id="opg-image-wrapper">
-            <img id="opg-image" src="{{ opg }}" alt="OPG Analysis">
+        <div id="opg-wrapper"
+            style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: grab;">
+            <img id="opg-image" src="{{ opg }}" alt="OPG"
+                style="max-width: 100%; max-height: 100%; transition: transform 0.1s;">
         </div>
 
-        <div class="viewer-controls">
-            <button class="control-btn" onclick="adjustZoom(-0.2)">－</button>
-            <span id="zoom-text"
-                style="font-size: 13px; font-weight: 500; min-width: 40px; text-align: center;">100%</span>
-            <button class="control-btn" onclick="adjustZoom(0.2)">＋</button>
-            <button class="control-btn" onclick="resetZoom()" style="margin-left: 8px; font-size: 13px;">Reset</button>
+        <!-- Raw controls -->
+        <div style="position: absolute; bottom: 20px; left: 20px; display: flex; gap: 10px;">
+            <button onclick="adjustZoom(-0.1)" class="btn"
+                style="background: #fff; color: #000; padding: 4px 8px;">-</button>
+            <button onclick="resetZoom()" class="btn"
+                style="background: #fff; color: #000; padding: 4px 8px;">RESET</button>
+            <button onclick="adjustZoom(0.1)" class="btn"
+                style="background: #fff; color: #000; padding: 4px 8px;">+</button>
         </div>
         {% else %}
-        <div style="color: rgba(255,255,255,0.5);">No OPG Image Available</div>
+        <div style="color: #fff; font-family: var(--font-mono);">[NO IMAGE AVAILABLE]</div>
         {% endif %}
     </div>
 
-    <!-- Sidebar Section -->
-    <div class="sidebar-section">
-        <a href="/estimate_age" class="back-link">‹ Back to Queue</a>
+    <!-- Sidebar -->
+    <div
+        style="padding: 20px; border-left: 1px solid var(--border-color); background: #fff; display: flex; flex-direction: column;">
+        <div style="margin-bottom: 20px; border-bottom: 2px solid var(--text-color); padding-bottom: 10px;">
+            <h2 style="margin: 0; font-size: 18px;">Assessment</h2>
+        </div>
 
-        <h2 style="font-size: 24px; font-weight: 600; margin-bottom: 8px; color: var(--apple-dark);">Age Estimation</h2>
-        <p style="color: var(--apple-gray); font-size: 15px; margin-bottom: 32px;">Review the OPG and input your
-            assessment.</p>
-
-        <div class="case-info">
-            <div class="info-row">
-                <span class="info-label">Case Code</span>
-                <span class="info-value" style="font-family: monospace;">{{ code }}</span>
+        <div style="margin-bottom: 40px; font-size: 13px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span style="color: #666;">CODE:</span>
+                <span style="font-weight: 700; font-family: monospace;">{{ code }}</span>
             </div>
-            <div class="info-row">
-                <span class="info-label">Method</span>
-                <span class="info-value">{{ method }}</span>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span style="color: #666;">METHOD:</span>
+                <span style="text-transform: uppercase;">{{ method }}</span>
             </div>
-            <div class="info-row">
-                <span class="info-label">Sex</span>
-                <span class="info-value" style="text-transform: capitalize;">{{ sex }}</span>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: #666;">SEX:</span>
+                <span style="text-transform: uppercase;">{{ sex }}</span>
             </div>
         </div>
 
-        <form method="POST" action="/estimate_age">
+        <form method="POST" action="/estimate_age" style="margin-top: auto;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="code" value="{{ code }}">
             <input type="hidden" name="method" value="{{ method.lower() }}">
 
-            <div class="estimation-form-group">
-                <label
-                    style="display: block; font-size: 13px; font-weight: 600; color: var(--apple-gray); margin-bottom: 8px;">ESTIMATED
-                    AGE</label>
-                <input type="number" step="0.1" name="estimated_age" class="estimation-input" required
-                    placeholder="0.0">
+            <div class="form-group">
+                <label>ESTIMATED AGE (YEARS)</label>
+                <input type="number" step="0.01" name="estimated_age" required
+                    style="font-size: 24px; font-weight: 700; padding: 10px; border: 2px solid var(--text-color);">
             </div>
 
-            <button type="submit" class="submit-btn" style="margin-top: auto;">Submit Estimation</button>
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 16px;">SUBMIT DATA</button>
         </form>
+
+        <div style="margin-top: 20px; text-align: center;">
+            <a href="/estimate_age" style="font-size: 12px;">&larr; CANCEL</a>
+        </div>
     </div>
 </div>
 
 <script>
-    // OPG Viewer Logic
-    const image = document.getElementById('opg-image');
-    const wrapper = document.getElementById('opg-image-wrapper');
-    const zoomText = document.getElementById('zoom-text');
-
     let scale = 1;
     let translateX = 0;
     let translateY = 0;
+    const img = document.getElementById('opg-image');
+    const wrapper = document.getElementById('opg-wrapper');
     let isDragging = false;
-    let startX = 0;
-    let startY = 0;
+    let startX, startY;
 
     function updateTransform() {
-        image.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
-        if (zoomText) zoomText.innerText = Math.round(scale * 100) + '%';
+        if (img) img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
     }
 
-    window.adjustZoom = function (delta) {
-        scale = Math.max(0.2, Math.min(5, scale + delta));
+    window.adjustZoom = (delta) => {
+        scale = Math.max(0.5, scale + delta);
         updateTransform();
-    }
+    };
 
-    window.resetZoom = function () {
+    window.resetZoom = () => {
         scale = 1;
         translateX = 0;
         translateY = 0;
         updateTransform();
-    }
+    };
 
     if (wrapper) {
-        wrapper.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            adjustZoom(e.deltaY > 0 ? -0.1 : 0.1);
-        });
-
         wrapper.addEventListener('mousedown', (e) => {
             isDragging = true;
             startX = e.clientX - translateX;
             startY = e.clientY - translateY;
-            wrapper.classList.add('grabbing');
+            wrapper.style.cursor = 'grabbing';
         });
 
         window.addEventListener('mouseup', () => {
             isDragging = false;
-            wrapper.classList.remove('grabbing');
+            if (wrapper) wrapper.style.cursor = 'grab';
         });
 
         window.addEventListener('mousemove', (e) => {
@@ -297,6 +117,11 @@
             translateX = e.clientX - startX;
             translateY = e.clientY - startY;
             updateTransform();
+        });
+
+        wrapper.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            adjustZoom(e.deltaY > 0 ? -0.1 : 0.1);
         });
     }
 </script>

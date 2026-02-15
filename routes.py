@@ -844,13 +844,26 @@ def generate_chart_data():
     dem_ages = [e.estimated_age for e in entries if e.method_used.lower() == 'demirjian']
     
     # Actual ages from patients
+    # Actual ages from patients
     actual_ages = []
+    
+    # Optimization: Fetch all patients at once to avoid N+1 query problem
+    # This replaces hundreds/thousands of DB queries with a single one
+    all_patients = Patient.query.filter(
+        db.or_(Patient.code_a.isnot(None), Patient.code_b.isnot(None))
+    ).all()
+    
+    # Create a map of code -> actual_age for O(1) lookup
+    code_to_age = {}
+    for p in all_patients:
+        if p.code_a:
+            code_to_age[p.code_a] = p.actual_age
+        if p.code_b:
+            code_to_age[p.code_b] = p.actual_age
+            
     for e in entries:
-        patient = Patient.query.filter(
-            (Patient.code_a == e.code) | (Patient.code_b == e.code)
-        ).first()
-        if patient:
-            actual_ages.append(patient.actual_age)
+        if e.code in code_to_age:
+            actual_ages.append(code_to_age[e.code])
     
     # Generate charts
     # 1. Age Distribution Chart

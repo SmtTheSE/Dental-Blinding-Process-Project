@@ -122,6 +122,70 @@
         }
     </style>
 
+    <script>
+        // Global function to handle reliable file downloads
+        function downloadFile(url, filename) {
+            // Create invisible iframe to handle download
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = url;
+            document.body.appendChild(iframe);
+            
+            // Remove iframe after download starts
+            setTimeout(() => {
+                document.body.removeChild(iframe);
+            }, 1000);
+        }
+        
+        // Enhanced download method using fetch with proper credentials
+        function downloadFileFetch(url, filename) {
+            fetch(url, {
+                method: 'GET',
+                credentials: 'same-origin', // Important: include cookies for same-origin requests
+                headers: {
+                    'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                }
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Content-Type:', response.headers.get('Content-Type'));
+                console.log('Content-Disposition:', response.headers.get('Content-Disposition'));
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // Check if response is actually Excel or HTML redirect
+                const contentType = response.headers.get('Content-Type');
+                if (contentType && contentType.includes('text/html')) {
+                    throw new Error('Received HTML instead of Excel file - authentication may have failed');
+                }
+                
+                return response.blob();
+            })
+            .then(blob => {
+                console.log('Blob size:', blob.size);
+                console.log('Blob type:', blob.type);
+                
+                // Create download link
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = downloadUrl;
+                link.download = filename || 'download.xlsx';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(downloadUrl);
+            })
+            .catch(error => {
+                console.error('Download failed:', error);
+                alert('Download failed: ' + error.message + '\n\nPlease try refreshing the page and logging in again.');
+                // Fallback to simple navigation
+                window.location.href = url;
+            });
+        }
+    </script>
+
     {% block extra_js %}{% endblock %}
 </body>
 

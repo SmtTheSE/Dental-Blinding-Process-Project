@@ -1,4 +1,4 @@
-from flask import Blueprint, request, render_template, redirect, url_for, flash, session, Response, current_app, send_from_directory, send_file
+from flask import Blueprint, request, render_template, redirect, url_for, flash, session, Response, current_app, send_from_directory, send_file, abort
 from models import db, Patient, EstimationEntry
 from dental_methods import calculate_demirjian_score, calculate_alqahtani_age, get_alqahtani_teeth, get_demirjian_teeth
 from functools import wraps
@@ -1075,6 +1075,9 @@ def clear_chart_cache():
 @main.route('/export_patients')
 @role_required('supervisor')
 def export_patients():
+    # DEBUG: Log export attempt
+    logger.info(f"EXPORT PATIENTS - User: {session.get('username')}, Role: {session.get('role')}")
+    
     # Export all patients as Excel file with embedded images
     # Process in batches to handle large datasets
     
@@ -1244,11 +1247,21 @@ def export_patients():
     wb.save(output)
     output.seek(0)
     
+    # DEBUG: Log file size and content
+    file_size = len(output.getvalue())
+    logger.info(f"Generated Excel file size: {file_size} bytes")
+    
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    download_name = f"patients_export_{timestamp}.xlsx"
+    
+    # Simple and reliable response
+    output.seek(0)
     return send_file(
         output,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         as_attachment=True,
-        download_name="patients.xlsx"
+        download_name=download_name
     )
 
 @main.route('/reset-passwords', methods=['GET', 'POST'])

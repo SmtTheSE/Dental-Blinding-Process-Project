@@ -104,6 +104,6 @@
 
 <!-- Footer Links -->
 <div style="margin-top: 60px; text-align: center;">
-    <a href="/export_patients" class="btn">Download Excel Report</a>
+    <a href="{{ url_for('main.export_patients') }}" class="btn" target="_blank">Download Excel Report</a>
 </div>
 {% endblock %}

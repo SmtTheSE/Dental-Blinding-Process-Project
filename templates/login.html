@@ -10,6 +10,9 @@
     </div>
 
     <form method="POST" class="card" style="box-shadow: 8px 8px 0px rgba(0,0,0,0.1);">
+        <!-- CSRF Token for security -->
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        
         <div class="form-group">
             <label for="username">Username</label>
             <input type="text" id="username" name="username" required autocomplete="off" autofocus>

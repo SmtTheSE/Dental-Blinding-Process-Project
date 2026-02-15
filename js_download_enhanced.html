@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Enhanced JavaScript Download Test</title>
+</head>
+<body>
+    <h1>Enhanced JavaScript Download Test</h1>
+    <button onclick="testEnhancedDownload()">Test Enhanced Download</button>
+    <div id="result"></div>
+
+    <script>
+        function testEnhancedDownload() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing enhanced download...</p>';
+            
+            fetch('http://localhost:5001/export_patients', {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                }
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Content-Type:', response.headers.get('Content-Type'));
+                console.log('Content-Disposition:', response.headers.get('Content-Disposition'));
+                
+                resultDiv.innerHTML += `<p>Status: ${response.status}</p>`;
+                resultDiv.innerHTML += `<p>Content-Type: ${response.headers.get('Content-Type')}</p>`;
+                resultDiv.innerHTML += `<p>Content-Disposition: ${response.headers.get('Content-Disposition')}</p>`;
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // Check content type
+                const contentType = response.headers.get('Content-Type');
+                if (contentType && contentType.includes('text/html')) {
+                    throw new Error('Received HTML instead of Excel - authentication failed');
+                }
+                
+                return response.blob();
+            })
+            .then(blob => {
+                console.log('Blob size:', blob.size);
+                console.log('Blob type:', blob.type);
+                
+                resultDiv.innerHTML += `<p>Blob size: ${blob.size} bytes</p>`;
+                resultDiv.innerHTML += `<p>Blob type: ${blob.type}</p>`;
+                
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'enhanced_test_export.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                resultDiv.innerHTML += '<p style="color: green;">✅ Enhanced download successful!</p>';
+            })
+            .catch(error => {
+                console.error('Download error:', error);
+                resultDiv.innerHTML += `<p style="color: red;">❌ Error: ${error.message}</p>`;
+            });
+        }
+    </script>
+</body>
+</html>

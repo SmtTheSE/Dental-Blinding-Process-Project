@@ -80,22 +80,15 @@ def create_app(config_name='default'):
     supabase_url = os.environ.get('SUPABASE_URL', '').replace('https://', '')
     supabase_domain = supabase_url.split('/')[0] if '/' in supabase_url else supabase_url
     
-    csp = {
-        'default-src': ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
-        'script-src': ["'self'", "'unsafe-inline'"],
-        'style-src': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        'style-src-elem': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        'font-src': ["'self'", "https://fonts.gstatic.com"],
-        'img-src': ["'self'", "data:", f"https://{supabase_domain}" if supabase_domain else "https:"],
-        'connect-src': ["'self'", f"https://{supabase_domain}" if supabase_domain else "https:", "https://fonts.googleapis.com", "https://fonts.gstatic.com"]
-    }
-    
-    from flask_talisman import Talisman
-    Talisman(app, 
-             content_security_policy=csp,
-             force_https=not app.debug and not app.testing,  # Force HTTPS in production
-             session_cookie_secure=not app.debug and not app.testing,
-             session_cookie_http_only=True)
+    # Talisman configuration for security headers
+    # csp = { ... }
+    # from flask_talisman import Talisman
+    # Talisman disabled for debugging
+    # Talisman(app, 
+    #          content_security_policy=csp,
+    #          force_https=not app.debug and not app.testing,
+    #          session_cookie_secure=not app.debug and not app.testing,
+    #          session_cookie_http_only=True)
 
     # Fix for Vercel/Proxy environments
     # This is CRITICAL for HTTPS and CSRF to work correctly behind a load balancer

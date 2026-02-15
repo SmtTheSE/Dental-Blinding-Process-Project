@@ -488,9 +488,11 @@ def assign_codes():
 @main.route('/upload_opg/<int:patient_id>', methods=['GET', 'POST'])
 @role_required('supervisor')
 def upload_opg(patient_id):
+    current_app.logger.info(f"Entered upload_opg for patient {patient_id}")
     patient = Patient.query.get_or_404(patient_id)
     
     if request.method == 'POST':
+        current_app.logger.info("Processing POST request in upload_opg")
         # Handle file upload
         if 'opg_file' in request.files:
             file = request.files['opg_file']

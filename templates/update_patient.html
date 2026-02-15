@@ -9,7 +9,7 @@
         <p>PATIENT ID: <span style="font-weight: 700;">{{ patient.patient_id }}</span></p>
     </div>
 
-    <form method="POST" action="{{ url_for('main.update_patient', patient_id=patient.patient_id) }}" class="card"
+    <form method="POST" action="{{ url_for('main.update_patient', patient_id=patient.id) }}" class="card"
         style="padding: 40px;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 

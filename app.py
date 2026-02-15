@@ -135,6 +135,16 @@ def create_app(config_name='default'):
             'tokens_match': session.get('csrf_token') == token
         }
         
+    @app.route('/debug/routes')
+    def debug_routes():
+        import urllib
+        output = []
+        for rule in app.url_map.iter_rules():
+            methods = ','.join(rule.methods)
+            line = urllib.parse.unquote(f"{rule.endpoint}: {rule} ({methods})")
+            output.append(line)
+        return "<br>".join(sorted(output))
+
     @app.route('/view-users')
     def view_users():
         """Temporary route to view user information"""

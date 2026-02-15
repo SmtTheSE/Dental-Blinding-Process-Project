@@ -10,6 +10,7 @@ from io import StringIO, BytesIO
 import os
 from werkzeug.utils import secure_filename
 from werkzeug.security import check_password_hash, generate_password_hash
+import concurrent.futures
 # Add openpyxl imports for Excel generation and reading
 from openpyxl import Workbook, load_workbook
 import openpyxl
@@ -1115,9 +1116,65 @@ def export_patients():
             has_more = False
             continue
             
-        # Write data
+        # Helper function to download and process image
+        def process_patient_image(patient_data):
+            p_id, url = patient_data
+            if not url or not url.startswith('http'):
+                return p_id, None
+                
+            try:
+                import urllib.request
+                import ssl
+                
+                # Create unverified SSL context
+                ctx = ssl.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+                
+                # Reduced timeout
+                with urllib.request.urlopen(url, context=ctx, timeout=5) as response:
+                    raw_data = BytesIO(response.read())
+                    
+                    try:
+                        with PILImage.open(raw_data) as pil_img:
+                            if pil_img.mode in ('RGBA', 'P'):
+                                pil_img = pil_img.convert('RGB')
+                            pil_img.thumbnail((300, 300))
+                            
+                            image_data = BytesIO()
+                            pil_img.save(image_data, format='JPEG', quality=85)
+                            image_data.seek(0)
+                            return p_id, image_data
+                    except Exception:
+                        # Return original if resize fails
+                        raw_data.seek(0)
+                        return p_id, raw_data
+            except Exception as e:
+                logger.error(f"Failed to download image for {p_id}: {e}")
+                return p_id, None
+
+        # Prepare list for parallel download
+        download_tasks = []
+        for p in patients:
+            if p.opg_link and p.opg_link.startswith('http'):
+                download_tasks.append((p.id, p.opg_link))
+        
+        # Execute parallel downloads (max 20 workers)
+        image_map = {}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+            # map returns results in order
+            pass 
+            # We use submit to get futures
+            future_to_pid = {executor.submit(process_patient_image, task): task[0] for task in download_tasks}
+            
+            for future in concurrent.futures.as_completed(future_to_pid):
+                p_id, img_data = future.result()
+                if img_data:
+                    image_map[p_id] = img_data
+
+        # Write data row by row
         for row_idx, patient in enumerate(patients, start=offset+2):
-            # Set row height to accommodate image
+            # Set row height
             ws.row_dimensions[row_idx].height = 80
             
             # Add patient data
@@ -1125,92 +1182,42 @@ def export_patients():
             ws.cell(row=row_idx, column=2, value=patient.name)
             ws.cell(row=row_idx, column=3, value=patient.actual_age)
             ws.cell(row=row_idx, column=4, value=patient.sex)
-            # Image column (5) will be handled separately
             ws.cell(row=row_idx, column=6, value=patient.code_a)
             ws.cell(row=row_idx, column=7, value=patient.code_b)
             ws.cell(row=row_idx, column=8, value=patient.alqahtani_estimated_age)
             ws.cell(row=row_idx, column=9, value=patient.demirjian_estimated_age)
             ws.cell(row=row_idx, column=10, value=patient.actual_age)
             
-            # Handle image embedding if image exists
+            # Handle image embedding
             if patient.opg_link:
                 try:
+                    img = None
                     if patient.opg_link.startswith('http'):
-                        # Handle Supabase image URL
-                        try:
-                            import urllib.request
-                            import ssl
-                            
-                            # Create unverified SSL context to bypass certificate issues
-                            ctx = ssl.create_default_context()
-                            ctx.check_hostname = False
-                            ctx.verify_mode = ssl.CERT_NONE
-                            
-                            # Download image data with unverified context
-                            # Reduce timeout to 5 seconds to prevent export timeout
-                            with urllib.request.urlopen(patient.opg_link, context=ctx, timeout=5) as response:
-                                raw_data = BytesIO(response.read())
-                                
-                                # Resize image to reduce file size and memory usage
-                                try:
-                                    with PILImage.open(raw_data) as pil_img:
-                                        # Convert to RGB if necessary
-                                        if pil_img.mode in ('RGBA', 'P'):
-                                            pil_img = pil_img.convert('RGB')
-                                        
-                                        # Resize to thumbnail (max 300x300)
-                                        pil_img.thumbnail((300, 300))
-                                        
-                                        # Save to new buffer
-                                        image_data = BytesIO()
-                                        pil_img.save(image_data, format='JPEG', quality=85)
-                                        image_data.seek(0)
-                                        
-                                        # Load resize image into Excel
-                                        img = ExcelImage(image_data)
-                                except Exception as img_err:
-                                    # Fallback to original if PIL fails
-                                    logger.warning(f"PIL resize failed: {img_err}, using original")
-                                    raw_data.seek(0)
-                                    img = ExcelImage(raw_data)
-                                
-                                # Set display size in Excel
-                                img.height = 100
-                                img.width = 100
-                                
-                                # Add image to the worksheet at column E
-                                ws.add_image(img, f'E{row_idx}')
-                        except Exception as e:
-                            ws.cell(row=row_idx, column=5, value="Image Load Error")
-                            logger.error(f"Failed to embed image for patient {patient.patient_id}: {str(e)}")
+                        # Retrieve from pre-downloaded map
+                        if patient.id in image_map:
+                            img = ExcelImage(image_map[patient.id])
                     else:
-                        # Handle local image file
+                        # Local file fallback
                         image_path = patient.opg_link.lstrip('/')
-                        # Check multiple path possibilities
                         possible_paths = [
                             os.path.join(current_app.root_path, image_path),
                             os.path.abspath(image_path),
                             image_path
                         ]
-                        
-                        found_path = None
                         for path in possible_paths:
                             if os.path.exists(path):
-                                found_path = path
+                                img = ExcelImage(path)
                                 break
-                                
-                        if found_path:
-                            try:
-                                img = ExcelImage(found_path)
-                                img.height = 100
-                                img.width = 100
-                                ws.add_image(img, f'E{row_idx}')
-                            except Exception as e:
-                                ws.cell(row=row_idx, column=5, value="Image Format Error")
-                        else:
-                             ws.cell(row=row_idx, column=5, value="File Not Found")
+                    
+                    if img:
+                        img.height = 100
+                        img.width = 100
+                        ws.add_image(img, f'E{row_idx}')
+                    else:
+                        ws.cell(row=row_idx, column=5, value="Image Load Error" if patient.opg_link.startswith('http') else "File Not Found")
+                        
                 except Exception as e:
-                    logger.error(f"Error processing image for excel: {str(e)}")
+                    logger.error(f"Error embedding image for {patient.patient_id}: {e}")
                     ws.cell(row=row_idx, column=5, value="Error")
             else:
                 ws.cell(row=row_idx, column=5, value="No Image")

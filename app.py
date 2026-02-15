@@ -187,51 +187,31 @@ def create_app(config_name='default'):
         generate_csrf_token()
         return render_template('login.html')
     
-    @app.route('/setup')
-    def setup():
-        try:
-            is_render = bool(os.environ.get('RENDER'))
-            app.logger.info(f'RENDER environment: {is_render}')
-            app.logger.info(f'FLASK_ENV: {os.environ.get("FLASK_ENV", "not set")}')
-            app.logger.info(f'SUPABASE_DB_URL: {"set" if os.environ.get("SUPABASE_DB_URL") else "not set"}')
-            app.logger.info(f'Configured database URI: {app.config.get("SQLALCHEMY_DATABASE_URI", "not set")}'[:50] + "...")
-            
-            # Check for common deployment issues
-            if not os.environ.get('SUPABASE_DB_URL') and not os.environ.get('DATABASE_URL'):
-                error_msg = ("CRITICAL ERROR: SUPABASE_DB_URL environment variable is not set!\n\n"
-                           "Please check:\n"
-                           "- That you have created a .env file with SUPABASE_DB_URL\n"
-                           "- That your Supabase database connection string is correct\n"
-                           "- Your Supabase dashboard to ensure the database is accessible")
-                app.logger.error(error_msg)
-                return error_msg.replace('\n', '<br>'), 500
-            
-            from setup_db import init_db
-            success = init_db(app)
-            if success:
-                app.logger.info("Database initialized successfully")
-                return "Database initialized successfully!"
-            else:
-                return "Database initialization failed", 500
-        except Exception as e:
-            error_msg = str(e)
-            app.logger.error(f"Error initializing database: {error_msg}")
-            app.logger.error(traceback.format_exc())
-            
-            # Provide specific guidance for common issues
-            if "missing-db-url" in error_msg:
-                return ("Database connection failed. The DATABASE_URL environment variable is not set. "
-                        "Please ensure your PostgreSQL database is created and linked to your web service."), 500
-            elif "localhost" in error_msg or "127.0.0.1" in error_msg:
-                return ("Database connection failed. The application is trying to connect to a local database "
-                        "which doesn't exist in the Render environment. Please ensure that:\n"
-                        "1. You have a PostgreSQL database service in Render\n"
-                        "2. The DATABASE_URL environment variable is properly set\n"
-                        "3. Your web service is linked to the database service\n\n"
-                        f"Error details: {error_msg}"), 500
-            else:
-                return f"Error initializing database: {error_msg}", 500
-    
+    # Error handlers for debugging
+    @app.errorhandler(400)
+    def bad_request_error(e):
+        app.logger.error(f"Bad Request (400): {e.description}")
+        # Log headers to see what's wrong
+        app.logger.info(f"Request Headers: {dict(request.headers)}")
+        return f"Bad Request (400): {e.description}. <br><br>Request Headers: {dict(request.headers)}", 400
+
+    @app.errorhandler(500)
+    def internal_error(e):
+        app.logger.error(f"Internal Server Error (500): {e}")
+        app.logger.error(traceback.format_exc())
+        return f"Internal Server Error (500): {e}", 500
+
+    # Log every request to see headers (Temporary for debugging)
+    @app.before_request
+    def log_request_info():
+        # Skip logging for static files
+        if request.path.startswith('/static'):
+            return
+        app.logger.info(f"Request: {request.method} {request.url}")
+        app.logger.info(f"Scheme: {request.scheme}")
+        app.logger.info(f"Remote Addr: {request.remote_addr}")
+        app.logger.info(f"X-Forwarded-Proto: {request.headers.get('X-Forwarded-Proto')}")
+
     return app
 
 # For gunicorn

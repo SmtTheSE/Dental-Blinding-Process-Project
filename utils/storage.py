@@ -64,7 +64,8 @@ def upload_image(file, filename: str) -> str:
         
         headers = {
             "Authorization": f"Bearer {key}",
-            "Content-Type": file.content_type
+            "Content-Type": file.content_type,
+            "x-upsert": "true"  # Force overwrite if file exists
         }
         
         logger.info(f"Uploading via direct HTTP to: {storage_url.split('?')[0]}")

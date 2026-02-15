@@ -385,10 +385,16 @@ def manage_patients():
     
     return render_template('patients.html', patients=patients, search_query=search_query)
 
-@main.route('/patients/update/<int:id>', methods=['GET', 'POST'])
+@main.route('/patients/update/<patient_id>', methods=['GET', 'POST'])
 @role_required('supervisor')
-def update_patient(id):
-    patient = Patient.query.get_or_404(id)
+def update_patient(patient_id):
+    current_app.logger.info(f"Entered update_patient with id: {patient_id}")
+    try:
+        patient_id_int = int(patient_id)
+        patient = Patient.query.get_or_404(patient_id_int)
+    except ValueError:
+        current_app.logger.error(f"Invalid patient_id for update: {patient_id}")
+        return f"Invalid Patient ID: {patient_id}", 400
     
     if request.method == 'POST':
         old_patient_id = patient.patient_id
@@ -414,10 +420,16 @@ def update_patient(id):
     
     return render_template('update_patient.html', patient=patient)
 
-@main.route('/patients/delete/<int:patient_id>', methods=['POST'])
+@main.route('/patients/delete/<patient_id>', methods=['POST'])
 @role_required('supervisor')
 def delete_patient(patient_id):
-    patient = Patient.query.get_or_404(patient_id)
+    current_app.logger.info(f"Entered delete_patient with id: {patient_id}")
+    try:
+        patient_id_int = int(patient_id)
+        patient = Patient.query.get_or_404(patient_id_int)
+    except ValueError:
+        current_app.logger.error(f"Invalid patient_id for delete: {patient_id}")
+        return f"Invalid Patient ID: {patient_id}", 400
     
     # Delete OPG image from Supabase if it exists
     if patient.opg_link and patient.opg_link.startswith('http'):
@@ -487,11 +499,16 @@ def assign_codes():
     flash('Codes assigned to all patients')
     return redirect(url_for('main.manage_patients'))
 
-@main.route('/upload_opg/<int:patient_id>', methods=['GET', 'POST'])
+@main.route('/upload_opg/<patient_id>', methods=['GET', 'POST'])
 @role_required('supervisor')
 def upload_opg(patient_id):
     current_app.logger.info(f"Entered upload_opg for patient {patient_id}")
-    patient = Patient.query.get_or_404(patient_id)
+    try:
+        patient_id_int = int(patient_id)
+        patient = Patient.query.get_or_404(patient_id_int)
+    except ValueError:
+        current_app.logger.error(f"Invalid patient_id for upload: {patient_id}")
+        return f"Invalid Patient ID: {patient_id}", 400
     
     if request.method == 'POST':
         current_app.logger.info("Processing POST request in upload_opg")

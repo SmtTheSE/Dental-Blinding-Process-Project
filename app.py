@@ -96,6 +96,11 @@ def create_app(config_name='default'):
              force_https=not app.debug and not app.testing,  # Force HTTPS in production
              session_cookie_secure=not app.debug and not app.testing,
              session_cookie_http_only=True)
+
+    # Fix for Vercel/Proxy environments
+    # This is CRITICAL for HTTPS and CSRF to work correctly behind a load balancer
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
     
     @app.route('/favicon.ico')
     def favicon():

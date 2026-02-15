@@ -15,6 +15,7 @@ from openpyxl import Workbook, load_workbook
 import openpyxl
 from openpyxl.drawing.image import Image as ExcelImage
 from openpyxl.utils import get_column_letter
+from PIL import Image as PILImage
 # Add matplotlib for chart generation
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
@@ -1146,12 +1147,34 @@ def export_patients():
                             ctx.verify_mode = ssl.CERT_NONE
                             
                             # Download image data with unverified context
-                            with urllib.request.urlopen(patient.opg_link, context=ctx, timeout=60) as response:
-                                image_data = BytesIO(response.read())
-                                # Load image
-                                img = ExcelImage(image_data)
+                            # Reduce timeout to 5 seconds to prevent export timeout
+                            with urllib.request.urlopen(patient.opg_link, context=ctx, timeout=5) as response:
+                                raw_data = BytesIO(response.read())
                                 
-                                # Resize image to fit in the cell
+                                # Resize image to reduce file size and memory usage
+                                try:
+                                    with PILImage.open(raw_data) as pil_img:
+                                        # Convert to RGB if necessary
+                                        if pil_img.mode in ('RGBA', 'P'):
+                                            pil_img = pil_img.convert('RGB')
+                                        
+                                        # Resize to thumbnail (max 300x300)
+                                        pil_img.thumbnail((300, 300))
+                                        
+                                        # Save to new buffer
+                                        image_data = BytesIO()
+                                        pil_img.save(image_data, format='JPEG', quality=85)
+                                        image_data.seek(0)
+                                        
+                                        # Load resize image into Excel
+                                        img = ExcelImage(image_data)
+                                except Exception as img_err:
+                                    # Fallback to original if PIL fails
+                                    logger.warning(f"PIL resize failed: {img_err}, using original")
+                                    raw_data.seek(0)
+                                    img = ExcelImage(raw_data)
+                                
+                                # Set display size in Excel
                                 img.height = 100
                                 img.width = 100
                                 

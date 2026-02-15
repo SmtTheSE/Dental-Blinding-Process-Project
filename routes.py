@@ -391,7 +391,10 @@ def update_patient(patient_id):
     current_app.logger.info(f"Entered update_patient with id: {patient_id}")
     try:
         patient_id_int = int(patient_id)
-        patient = Patient.query.get_or_404(patient_id_int)
+        patient = Patient.query.get(patient_id_int)
+        if not patient:
+            current_app.logger.error(f"Patient not found in DB: {patient_id_int}")
+            return f"DEBUG: Patient with ID {patient_id_int} not found in database.", 404
     except ValueError:
         current_app.logger.error(f"Invalid patient_id for update: {patient_id}")
         return f"Invalid Patient ID: {patient_id}", 400
@@ -426,7 +429,10 @@ def delete_patient(patient_id):
     current_app.logger.info(f"Entered delete_patient with id: {patient_id}")
     try:
         patient_id_int = int(patient_id)
-        patient = Patient.query.get_or_404(patient_id_int)
+        patient = Patient.query.get(patient_id_int)
+        if not patient:
+            current_app.logger.error(f"Patient not found in DB: {patient_id_int}")
+            return f"DEBUG: Patient with ID {patient_id_int} not found in database.", 404
     except ValueError:
         current_app.logger.error(f"Invalid patient_id for delete: {patient_id}")
         return f"Invalid Patient ID: {patient_id}", 400
@@ -505,7 +511,10 @@ def upload_opg(patient_id):
     current_app.logger.info(f"Entered upload_opg for patient {patient_id}")
     try:
         patient_id_int = int(patient_id)
-        patient = Patient.query.get_or_404(patient_id_int)
+        patient = Patient.query.get(patient_id_int)
+        if not patient:
+            current_app.logger.error(f"Patient not found in DB: {patient_id_int}")
+            return f"DEBUG: Patient with ID {patient_id_int} not found in database.", 404
     except ValueError:
         current_app.logger.error(f"Invalid patient_id for upload: {patient_id}")
         return f"Invalid Patient ID: {patient_id}", 400

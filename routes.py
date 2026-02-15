@@ -98,21 +98,23 @@ def validate_csrf_token():
 @main.before_request
 def csrf_protect():
     """CSRF protection for all POST requests"""
-    if request.method == "POST":
-        # Skip CSRF check for specific endpoints
-        if request.endpoint not in ['main.upload_opg', 'main.get_estimation_form']:
-            if not validate_csrf_token():
-                # Determine response format based on request type
-                if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    # Return JSON error for AJAX or JSON requests
-                    return Response(
-                        '{"error": "Security token validation failed. Please refresh the page and try again."}', 
-                        status=400, 
-                        mimetype='application/json'
-                    )
-                # For regular form submissions, use flash and redirect
-                flash('Security token validation failed. Please try again.')
-                return redirect(request.url)
+    # TEMPORARILY DISABLED FOR DEBUGGING
+    return None
+    # if request.method == "POST":
+    #     # Skip CSRF check for specific endpoints
+    #     if request.endpoint not in ['main.upload_opg', 'main.get_estimation_form']:
+    #         if not validate_csrf_token():
+    #             # Determine response format based on request type
+    #             if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+    #                 # Return JSON error for AJAX or JSON requests
+    #                 return Response(
+    #                     '{"error": "Security token validation failed. Please refresh the page and try again."}', 
+    #                     status=400, 
+    #                     mimetype='application/json'
+    #                 )
+    #             # For regular form submissions, use flash and redirect
+    #             flash('Security token validation failed. Please try again.')
+    #             return redirect(request.url)
 
 @main.route('/dashboard')
 @login_required

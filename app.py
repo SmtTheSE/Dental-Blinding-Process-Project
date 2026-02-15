@@ -186,7 +186,7 @@ def create_app(config_name='default'):
         app.logger.error(f"Bad Request (400): {e.description}")
         # Log headers to see what's wrong
         app.logger.info(f"Request Headers: {dict(request.headers)}")
-        return f"Bad Request (400): {e.description}. <br><br>Request Headers: {dict(request.headers)}", 400
+        return f"Bad Request (400): {e.description}. <br><br>Endpoint: {request.endpoint}<br>Request Headers: {dict(request.headers)}", 400
 
     @app.errorhandler(500)
     def internal_error(e):

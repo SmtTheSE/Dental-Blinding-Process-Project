@@ -108,8 +108,8 @@
                     <td style="text-align: right;">
                         <a href="/upload_opg/{{ patient.id }}" style="margin-right: 10px;">[UPLOAD]</a>
                         <a href="/patients/update/{{ patient.id }}" style="margin-right: 10px;">[EDIT]</a>
-                        <form method="POST" action="/patients/delete/{{ patient.id }}" style="display: inline;"
-                            onsubmit="return confirm('Confirm delete?');">
+                        <form method="POST" action="{{ url_for('main.delete_patient', patient_id=patient.id) }}"
+                            style="display: inline;" onsubmit="return confirm('Confirm delete?');">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <button type="submit"
                                 style="background: none; border: none; color: var(--error-color); cursor: pointer; font-family: inherit; font-size: inherit; padding: 0;">[DEL]</button>

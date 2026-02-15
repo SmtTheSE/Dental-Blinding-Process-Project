@@ -48,20 +48,55 @@ def upload_image(file, filename: str) -> str:
         file_content = file.read()
         logger.info(f"File read successfully, size: {len(file_content)} bytes")
         
-        # Upload file to Supabase Storage
-        try:
-            logger.info(f"Attempting to upload to Supabase storage bucket '{bucket}'")
-            res = supabase.storage.from_(bucket).upload(
-                file=file_content,
-                path=filename,
-                file_options={"content-type": file.content_type}
-            )
-            logger.info(f"Upload response received: {type(res)}")
-            logger.info(f"Upload response: {res}")
-        except Exception as upload_error:
-            logger.error(f"Upload to Supabase failed: {str(upload_error)}")
-            logger.error(f"Upload error type: {type(upload_error)}")
-            raise Exception(f"Failed to upload file to Supabase storage: {str(upload_error)}")
+        # Upload file to Supabase Storage with retry logic
+        max_retries = 3
+        retry_delay = 1  # seconds
+        
+        import time
+        
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Attempting to upload to Supabase storage bucket '{bucket}' (Attempt {attempt + 1}/{max_retries})")
+                
+                # Ensure file_content is bytes
+                if not isinstance(file_content, bytes):
+                    logger.warning(f"file_content is not bytes, type: {type(file_content)}. Converting/Handling...")
+                    # If it's a file-like object, read it again? But we already read it above.
+                    pass
+                
+                res = supabase.storage.from_(bucket).upload(
+                    file=file_content,
+                    path=filename,
+                    file_options={"content-type": file.content_type}
+                )
+                logger.info(f"Upload response received: {type(res)}")
+                logger.info(f"Upload response: {res}")
+                break  # Success, exit loop
+                
+            except Exception as upload_error:
+                error_str = str(upload_error)
+                logger.error(f"Upload attempt {attempt + 1} failed: {error_str}")
+                
+                # Check for "Device or resource busy" (Errno 16) or other transient errors
+                if "[Errno 16]" in error_str or "Device or resource busy" in error_str:
+                    if attempt < max_retries - 1:
+                        logger.warning(f"Transient error detected. Retrying in {retry_delay} seconds...")
+                        time.sleep(retry_delay)
+                        continue
+                
+                # If it's the last attempt or not a transient error, raise
+                if attempt == max_retries - 1:
+                     logger.error(f"Upload to Supabase failed after {max_retries} attempts: {error_str}")
+                     logger.error(f"Upload error type: {type(upload_error)}")
+                     raise Exception(f"Failed to upload file to Supabase storage: {error_str}")
+                
+                # Rethrow other errors immediately if we don't want to retry them
+                # But for now, let's retry mostly everything that looks like an OS error
+                if isinstance(upload_error, OSError):
+                    time.sleep(retry_delay)
+                    continue
+                else:
+                    raise Exception(f"Failed to upload file to Supabase storage: {error_str}")
         
         # Generate signed URL that expires in 1 year (for permanent access)
         # This is needed when RLS (Row Level Security) is enabled

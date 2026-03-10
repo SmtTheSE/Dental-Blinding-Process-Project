@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Dental Age Estimation System - UDMM{% endblock %}
+
+{% block content %}
+<div class="landing-hero centered-layout">
+    <div class="brand-eyebrow">
+        Dental Care
+    </div>
+
+    <!-- Icon Style Image -->
+    <div class="hero-image-container icon-style">
+        <img src="{{ url_for('static', filename='img/hero_tooth_3d.png') }}" alt="Tooth Model"
+            class="shake-on-hover hero-image">
+    </div>
+
+    <h1 class="hero-title">
+        DENTAL AGE<br>
+        ESTIMATION
+    </h1>
+
+    <p class="hero-description">
+        Precision forensic odontology backed by validated methodologies.
+    </p>
+
+    <div style="margin-top: 20px;">
+        <a href="{{ url_for('auth.login') }}" class="btn">ENTER SYSTEM</a>
+    </div>
+</div>
+
+<div id="features" style="padding: 100px 0; border-top: 1px solid var(--border-color);">
+    <div style="margin-bottom: 60px;">
+        <h2 style="font-size: 32px; margin-bottom: 10px;">METHODOLOGY</h2>
+        <p style="font-size: 18px; color: var(--apple-gray);">Systematic approach to unbiased age estimation</p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 40px;">
+        <!-- Card 1 -->
+        <div class="card">
+            <h3 style="font-size: 24px; margin-bottom: 15px;">Dual Analysis</h3>
+            <p>Implements both AlQahtani and Demirjian methodologies for comprehensive dental age assessment in research
+                studies.</p>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="card">
+            <h3 style="font-size: 24px; margin-bottom: 15px;">Blinded Protocol</h3>
+            <p>Rigorous blinding process ensures estimators remain unaware of patient biographical data to eliminate
+                bias.</p>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="card">
+            <h3 style="font-size: 24px; margin-bottom: 15px;">Statistical Data</h3>
+            <p>Automated generation of age estimation charts and comparative analysis vs chronological age.</p>
+        </div>
+    </div>
+</div>
+
+<div style="padding: 80px 0; border-top: 1px solid var(--border-color); text-align: center;">
+    <h2 style="font-size: 80px; margin-bottom: 10px;">100%</h2>
+    <p style="font-size: 24px;">RESEARCH COMPLIANCE</p>
+</div>
+{% endblock %}

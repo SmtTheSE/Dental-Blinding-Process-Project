@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Patients - Dental Age Estimation System{% endblock %}
+
+{% block content %}
+<div class="page-header"
+    style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; border-bottom: 2px solid var(--text-color); padding-bottom: 20px;">
+    <div>
+        <h1 style="margin: 0;">Patients</h1>
+        <p style="margin: 0; font-size: 14px;">Database Management</p>
+    </div>
+
+    <!-- Search -->
+    <form method="GET" action="/patients" style="display: flex; align-items: center; gap: 10px;">
+        <input type="text" name="search" placeholder="SEARCH ID/NAME..." value="{{ search_query or '' }}"
+            style="width: 250px; text-transform: uppercase;">
+        {% if search_query %}
+        <a href="/patients" class="btn" style="padding: 10px;">X</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Forms Section -->
+<div class="patients-grid">
+    <!-- Add Patient -->
+    <div>
+        <h2>Add Patient</h2>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="form-group">
+                <label>Patient ID</label>
+                <input type="text" name="patient_id" required placeholder="P-001">
+            </div>
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" name="name" placeholder="Optional">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="form-group">
+                    <label>Age</label>
+                    <input type="number" step="0.1" name="actual_age" required placeholder="0.0">
+                </div>
+                <div class="form-group">
+                    <label>Sex</label>
+                    <select name="sex">
+                        <option value="male">MALE</option>
+                        <option value="female">FEMALE</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">+ Add Record</button>
+        </form>
+    </div>
+
+    <!-- Import -->
+    <div>
+        <h2>Import Data</h2>
+        <p style="margin-bottom: 20px; font-size: 13px;">Upload CSV/Excel (Format: ID, Name, Age, Sex)</p>
+
+        <form method="POST" enctype="multipart/form-data" class="card">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="form-group">
+                <input type="file" name="csv_file" accept=".csv,.xlsx,.xls" onchange="this.form.submit()">
+            </div>
+        </form>
+
+        <div style="margin-top: 20px; display: flex; gap: 10px; align-items: center;">
+            <a href="/assign_codes" class="btn">Assign Blinding Codes &rarr;</a>
+            <button id="bulk-delete-btn" class="btn" style="color: var(--error-color); border-color: var(--error-color); opacity: 0.5; cursor: not-allowed;" disabled onclick="confirmBulkDelete()">Bulk Delete Selected [0]</button>
+        </div>
+    </div>
+</div>
+
+<!-- Patients List -->
+<div>
+    <h2>Database Records</h2>
+
+    {% if patients.items %}
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 40px; text-align: center;">
+                        <input type="checkbox" id="select-all-checkbox" onclick="toggleSelectAll(this)" style="cursor: pointer;">
+                    </th>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Age</th>
+                    <th>Sex</th>
+                    <th>OPG</th>
+                    <th>Blind A</th>
+                    <th>Blind B</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for patient in patients.items %}
+                <tr>
+                    <td style="text-align: center;">
+                        <input type="checkbox" name="patient_ids" value="{{ patient.id }}" class="patient-checkbox" onclick="updateBulkDeleteButton()" style="cursor: pointer;">
+                    </td>
+                    <td style="font-weight: 700;">{{ patient.patient_id }}</td>
+                    <td>{{ patient.name or '—' }}</td>
+                    <td>{{ patient.actual_age }}</td>
+                    <td style="text-transform: uppercase;">{{ patient.sex }}</td>
+                    <td>
+                        {% if patient.opg_link %}
+                        <span style="color: var(--success-color);">[YES]</span>
+                        {% else %}
+                        <span style="color: var(--error-color);">[NO]</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-family: monospace;">{{ patient.code_a or '—' }}</td>
+                    <td style="font-family: monospace;">{{ patient.code_b or '—' }}</td>
+                    <td style="text-align: right;">
+                        <a href="/upload_opg/{{ patient.id }}" style="margin-right: 10px;">[UPLOAD]</a>
+                        <a href="/patients/update/{{ patient.id }}" style="margin-right: 10px;">[EDIT]</a>
+                        <button type="button"
+                            onclick="confirmDelete('{{ url_for('main.delete_patient', patient_id=patient.id) }}')"
+                            style="background: none; border: none; color: var(--error-color); cursor: pointer; font-family: inherit; font-size: inherit; padding: 0;">[DEL]</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if patients.pages > 1 %}
+    <div
+        style="display: flex; justify-content: center; gap: 20px; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+        {% if patients.has_prev %}
+        <a href="{{ url_for('main.manage_patients', page=patients.prev_num, search=search_query) }}">&larr; Previous</a>
+        {% endif %}
+
+        <span>Page {{ patients.page }} / {{ patients.pages }}</span>
+
+        {% if patients.has_next %}
+        <a href="{{ url_for('main.manage_patients', page=patients.next_num, search=search_query) }}">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div style="padding: 40px; text-align: center; border: 1px dashed var(--border-color);">
+        <p>NO RECORDS FOUND.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Global hidden delete form -->
+<form id="global-delete-form" method="POST" style="display: none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div id="bulk-ids-container"></div>
+</form>
+
+<script>
+    let deleteUrlTarget = null;
+
+    function confirmDelete(deleteUrl) {
+        // Show custom modal instead of native confirm
+        const modal = document.getElementById('custom-modal');
+        const msg = document.getElementById('modal-message');
+        msg.textContent = 'Are you sure you want to delete this patient? This action cannot be undone.';
+
+        // Store the URL
+        deleteUrlTarget = deleteUrl;
+        isBulkDelete = false;
+
+        // Show modal
+        modal.style.display = 'flex';
+    }
+
+    function confirmBulkDelete() {
+        const selectedCheckboxes = document.querySelectorAll('.patient-checkbox:checked');
+        if (selectedCheckboxes.length === 0) return;
+
+        const modal = document.getElementById('custom-modal');
+        const msg = document.getElementById('modal-message');
+        msg.textContent = `Are you sure you want to delete ${selectedCheckboxes.length} selected patient(s)? This action cannot be undone and will delete all associated data.`;
+
+        deleteUrlTarget = "{{ url_for('main.bulk_delete_patients') }}";
+        isBulkDelete = true;
+
+        modal.style.display = 'flex';
+    }
+
+    function toggleSelectAll(selectAllCheckbox) {
+        const checkboxes = document.querySelectorAll('.patient-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = selectAllCheckbox.checked;
+        });
+        updateBulkDeleteButton();
+    }
+
+    function updateBulkDeleteButton() {
+        const selectedCheckboxes = document.querySelectorAll('.patient-checkbox:checked');
+        const count = selectedCheckboxes.length;
+        const btn = document.getElementById('bulk-delete-btn');
+        const selectAll = document.getElementById('select-all-checkbox');
+        const allCheckboxes = document.querySelectorAll('.patient-checkbox');
+
+        if (count > 0) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+            btn.textContent = `Bulk Delete Selected [${count}]`;
+        } else {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+            btn.textContent = `Bulk Delete Selected [0]`;
+        }
+
+        // Update select-all state
+        if (selectAll) {
+            selectAll.checked = count === allCheckboxes.length && allCheckboxes.length > 0;
+            selectAll.indeterminate = count > 0 && count < allCheckboxes.length;
+        }
+    }
+
+    let isBulkDelete = false;
+
+    // Modal Event Listeners
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById('custom-modal');
+        const cancelBtn = document.getElementById('modal-cancel');
+        const confirmBtn = document.getElementById('modal-confirm');
+
+        if (cancelBtn) {
+            cancelBtn.onclick = function () {
+                modal.style.display = 'none';
+                deleteUrlTarget = null;
+            };
+        }
+
+        if (confirmBtn) {
+            confirmBtn.onclick = function () {
+                if (deleteUrlTarget) {
+                    var form = document.getElementById('global-delete-form');
+                    form.action = deleteUrlTarget;
+                    
+                    if (isBulkDelete) {
+                        const container = document.getElementById('bulk-ids-container');
+                        container.innerHTML = '';
+                        const selectedCheckboxes = document.querySelectorAll('.patient-checkbox:checked');
+                        selectedCheckboxes.forEach(cb => {
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = 'patient_ids[]';
+                            input.value = cb.value;
+                            container.appendChild(input);
+                        });
+                    }
+                    
+                    form.submit();
+                }
+                modal.style.display = 'none';
+            };
+        }
+
+        // Close on outside click
+        window.onclick = function (event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+    });
+</script>
+{% endblock %}

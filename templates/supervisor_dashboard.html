@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Supervisor Dashboard - Dental Age Estimation System{% endblock %}
+
+{% block content %}
+<div class="page-header" style="border-bottom: 2px solid var(--text-color); padding-bottom: 20px; margin-bottom: 40px;">
+    <h1>Supervisor Dashboard</h1>
+    <p>OVERVIEW & STATISTICS</p>
+</div>
+
+<div
+    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 40px; margin-bottom: 60px;">
+    <div class="card">
+        <h3>Total Patients</h3>
+        <div style="font-size: 48px; font-weight: 700; margin-top: 10px;">{{ total_patients }}</div>
+    </div>
+    <div class="card">
+        <h3>Pending Estimations</h3>
+        <div style="font-size: 48px; font-weight: 700; margin-top: 10px;">{{ pending_estimations }}</div>
+    </div>
+    <div class="card">
+        <h3>Completed Analysis</h3>
+        <div style="font-size: 48px; font-weight: 700; margin-top: 10px;">{{ completed_analysis }}</div>
+    </div>
+</div>
+
+<div style="margin-bottom: 60px;">
+    <h2>Recent Activity</h2>
+    {% if recent_activities %}
+    <table>
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for activity in recent_activities %}
+            <tr>
+                <td style="font-family: monospace;">{{ activity.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ activity.user.username }}</td>
+                <td style="text-transform: uppercase;">{{ activity.action }}</td>
+                <td>{{ activity.details }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="text-align: center; color: var(--apple-gray); padding: 40px; border: 1px dashed var(--border-color);">NO
+        RECENT ACTIVITY.</p>
+    {% endif %}
+</div>
+
+<div style="display: flex; gap: 20px; justify-content: center;">
+    <a href="{{ url_for('main.manage_patients') }}" class="btn">Manage Patients</a>
+    <a href="{{ url_for('main.analysis') }}" class="btn">View Analysis</a>
+</div>
+{% endblock %}

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Verify Download</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; text-align: center; }
+        .btn { 
+            display: inline-block;
+            padding: 15px 30px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px;
+        }
+        .btn:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>Download Verification</h1>
+    <p>Click the button below to test the Excel download:</p>
+    
+    <a href="http://localhost:5001/export_patients" class="btn" target="_blank">📥 Download Excel Report</a>
+    
+    <div style="margin-top: 30px;">
+        <p><strong>Instructions:</strong></p>
+        <ol style="text-align: left; display: inline-block;">
+            <li>Click the download button above</li>
+            <li>Check your downloads folder</li>
+            <li>The file should be named something like "patients_export_*.xlsx"</li>
+            <li>File size should be approximately 13.7KB</li>
+            <li>Should open correctly in Excel/Numbers/Google Sheets</li>
+        </ol>
+    </div>
+</body>
+</html>

@@ -500,61 +500,81 @@ def delete_patient(patient_id):
 @main.route('/patients/bulk_delete', methods=['POST'])
 @role_required('supervisor')
 def bulk_delete_patients():
+    select_all_matching = request.form.get('select_all_matching') == 'true'
+    search_query = request.form.get('search_query', '').strip()
     patient_ids = request.form.getlist('patient_ids[]')
-    if not patient_ids:
-        flash('No patients selected for deletion.')
-        return redirect(url_for('main.manage_patients'))
     
     deleted_count = 0
     try:
         from utils.storage import delete_image
         
-        for p_id in patient_ids:
-            patient = Patient.query.get(int(p_id))
-            if patient:
-                # Delete OPG image from Supabase if it exists
-                if patient.opg_link and patient.opg_link.startswith('http'):
-                    try:
-                        if '?' in patient.opg_link:
-                            path_part = patient.opg_link.split('?')[0]
-                            filename = path_part.split('/')[-1]
-                        else:
-                            filename = patient.opg_link.split('/')[-1]
-                        delete_image(filename)
-                    except:
-                        pass
+        if select_all_matching:
+            # Get all patients that would match the current view's filters
+            patients_query = Patient.query
+            if search_query:
+                patients_query = patients_query.filter(
+                    db.or_(
+                        Patient.patient_id.contains(search_query),
+                        Patient.name.contains(search_query),
+                        Patient.code_a.contains(search_query),
+                        Patient.code_b.contains(search_query)
+                    )
+                )
+            target_patients = patients_query.all()
+        else:
+            if not patient_ids:
+                flash('No patients selected for deletion.')
+                return redirect(url_for('main.manage_patients'))
+            target_patients = Patient.query.filter(Patient.id.in_([int(i) for i in patient_ids])).all()
+        
+        for patient in target_patients:
+            # Delete OPG image from Supabase if it exists
+            if patient.opg_link and patient.opg_link.startswith('http'):
+                try:
+                    if '?' in patient.opg_link:
+                        path_part = patient.opg_link.split('?')[0]
+                        filename = path_part.split('/')[-1]
+                    else:
+                        filename = patient.opg_link.split('/')[-1]
+                    delete_image(filename)
+                except:
+                    pass
+            
+            # Delete OPG image file if it exists locally
+            if patient.opg_link and not patient.opg_link.startswith('http'):
+                try:
+                    os.remove(os.path.join(current_app.root_path, patient.opg_link))
+                except:
+                    pass
+            
+            # Delete associated estimation entries
+            if patient.code_a:
+                EstimationEntry.query.filter_by(code=patient.code_a).delete()
+            if patient.code_b:
+                EstimationEntry.query.filter_by(code=patient.code_b).delete()
                 
-                # Delete OPG image file if it exists locally
-                if patient.opg_link and not patient.opg_link.startswith('http'):
-                    try:
-                        os.remove(os.path.join(current_app.root_path, patient.opg_link))
-                    except:
-                        pass
-                
-                # Delete associated estimation entries
-                if patient.code_a:
-                    EstimationEntry.query.filter_by(code=patient.code_a).delete()
-                if patient.code_b:
-                    EstimationEntry.query.filter_by(code=patient.code_b).delete()
-                    
-                db.session.delete(patient)
-                deleted_count += 1
+            db.session.delete(patient)
+            deleted_count += 1
         
-        db.session.commit()
-        
-        # Clear chart cache
-        global chart_cache
-        chart_cache = {}
-        
-        # Renumber patient IDs after deletion
-        renumber_patient_ids()
-        
-        flash(f'Successfully deleted {deleted_count} patient(s) and associated data.')
+        if deleted_count > 0:
+            db.session.commit()
+            
+            # Clear chart cache
+            global chart_cache
+            chart_cache = {}
+            
+            # Renumber patient IDs after deletion
+            renumber_patient_ids()
+            
+            flash(f'Successfully deleted {deleted_count} patient(s) and associated data.')
+        else:
+            flash('No patients found to delete.')
     except Exception as e:
         db.session.rollback()
         flash(f'Error during bulk deletion: {str(e)}')
         
-    return redirect(url_for('main.manage_patients'))
+    return redirect(url_for('main.manage_patients', search=search_query))
+
 
 
 @main.route('/assign_codes')

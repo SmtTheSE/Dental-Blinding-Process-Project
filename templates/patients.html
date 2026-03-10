@@ -75,6 +75,12 @@
 <div>
     <h2>Database Records</h2>
 
+    <div id="select-all-banner" style="display: none; background: var(--bg-color-alt, #f5f5f5); border: 1px solid var(--border-color); padding: 10px; margin-bottom: 20px; text-align: center; font-size: 14px;">
+        <span id="select-all-text">All {{ patients.items|length }} patients on this page are selected.</span>
+        <button type="button" id="select-all-db-btn" onclick="selectAllInDB(true)" style="background: none; border: none; color: var(--primary-color); cursor: pointer; font-weight: bold; text-decoration: underline; padding: 0 5px;">Select all {{ patients.total }} patients in database</button>
+        <button type="button" id="clear-selection-btn" onclick="selectAllInDB(false)" style="display: none; background: none; border: none; color: var(--primary-color); cursor: pointer; font-weight: bold; text-decoration: underline; padding: 0 5px;">Clear selection</button>
+    </div>
+
     {% if patients.items %}
     <div style="overflow-x: auto;">
         <table>
@@ -97,7 +103,7 @@
                 {% for patient in patients.items %}
                 <tr>
                     <td style="text-align: center;">
-                        <input type="checkbox" name="patient_ids" value="{{ patient.id }}" class="patient-checkbox" onclick="updateBulkDeleteButton()" style="cursor: pointer;">
+                        <input type="checkbox" name="patient_ids" value="{{ patient.id }}" class="patient-checkbox" onclick="handleCheckboxClick(event, this)" style="cursor: pointer;">
                     </td>
                     <td style="font-weight: 700;">{{ patient.patient_id }}</td>
                     <td>{{ patient.name or '—' }}</td>
@@ -151,6 +157,8 @@
 <!-- Global hidden delete form -->
 <form id="global-delete-form" method="POST" style="display: none;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="select_all_matching" id="select-all-matching-input" value="false">
+    <input type="hidden" name="search_query" value="{{ search_query or '' }}">
     <div id="bulk-ids-container"></div>
 </form>
 
@@ -190,21 +198,73 @@
         checkboxes.forEach(cb => {
             cb.checked = selectAllCheckbox.checked;
         });
+        
+        selectAllAcrossPages = false; // Reset when manual toggle happens
+        updateBulkDeleteButton();
+    }
+
+    let lastChecked = null;
+    let selectAllAcrossPages = false;
+    const totalPatientsInDB = {{ patients.total }};
+
+    function handleCheckboxClick(e, checkbox) {
+        if (!lastChecked) {
+            lastChecked = checkbox;
+            updateBulkDeleteButton();
+            return;
+        }
+
+        if (e.shiftKey) {
+            const checkboxes = Array.from(document.querySelectorAll('.patient-checkbox'));
+            const start = checkboxes.indexOf(checkbox);
+            const end = checkboxes.indexOf(lastChecked);
+            
+            checkboxes.slice(Math.min(start, end), Math.max(start, end) + 1)
+                .forEach(cb => cb.checked = lastChecked.checked);
+        }
+
+        lastChecked = checkbox;
+        selectAllAcrossPages = false; // Reset if any manual change
+        updateBulkDeleteButton();
+    }
+
+    function selectAllInDB(select) {
+        selectAllAcrossPages = select;
+        const banner = document.getElementById('select-all-banner');
+        const selectAllBtn = document.getElementById('select-all-db-btn');
+        const clearBtn = document.getElementById('clear-selection-btn');
+        const bannerText = document.getElementById('select-all-text');
+        const headerCheckbox = document.getElementById('select-all-checkbox');
+        
+        if (select) {
+            bannerText.textContent = `All ${totalPatientsInDB} patients in database are selected.`;
+            selectAllBtn.style.display = 'none';
+            clearBtn.style.display = 'inline-block';
+            headerCheckbox.checked = true;
+            document.querySelectorAll('.patient-checkbox').forEach(cb => cb.checked = true);
+        } else {
+            banner.style.display = 'none';
+            headerCheckbox.checked = false;
+            document.querySelectorAll('.patient-checkbox').forEach(cb => cb.checked = false);
+        }
         updateBulkDeleteButton();
     }
 
     function updateBulkDeleteButton() {
         const selectedCheckboxes = document.querySelectorAll('.patient-checkbox:checked');
-        const count = selectedCheckboxes.length;
+        const countOnPage = selectedCheckboxes.length;
+        const allOnPage = document.querySelectorAll('.patient-checkbox').length;
         const btn = document.getElementById('bulk-delete-btn');
         const selectAll = document.getElementById('select-all-checkbox');
-        const allCheckboxes = document.querySelectorAll('.patient-checkbox');
+        const banner = document.getElementById('select-all-banner');
+        
+        let displayCount = selectAllAcrossPages ? totalPatientsInDB : countOnPage;
 
-        if (count > 0) {
+        if (displayCount > 0) {
             btn.disabled = false;
             btn.style.opacity = '1';
             btn.style.cursor = 'pointer';
-            btn.textContent = `Bulk Delete Selected [${count}]`;
+            btn.textContent = `Bulk Delete Selected [${displayCount}]`;
         } else {
             btn.disabled = true;
             btn.style.opacity = '0.5';
@@ -212,10 +272,22 @@
             btn.textContent = `Bulk Delete Selected [0]`;
         }
 
+        // Show/hide select-all banner
+        if (banner) {
+            if (countOnPage === allOnPage && allOnPage > 0 && totalPatientsInDB > allOnPage && !selectAllAcrossPages) {
+                banner.style.display = 'block';
+                document.getElementById('select-all-text').textContent = `All ${allOnPage} patients on this page are selected.`;
+                document.getElementById('select-all-db-btn').style.display = 'inline-block';
+                document.getElementById('clear-selection-btn').style.display = 'none';
+            } else if (!selectAllAcrossPages) {
+                banner.style.display = 'none';
+            }
+        }
+
         // Update select-all state
         if (selectAll) {
-            selectAll.checked = count === allCheckboxes.length && allCheckboxes.length > 0;
-            selectAll.indeterminate = count > 0 && count < allCheckboxes.length;
+            selectAll.checked = countOnPage === allOnPage && allOnPage > 0;
+            selectAll.indeterminate = countOnPage > 0 && countOnPage < allOnPage;
         }
     }
 
@@ -241,16 +313,21 @@
                     form.action = deleteUrlTarget;
                     
                     if (isBulkDelete) {
+                        document.getElementById('select-all-matching-input').value = selectAllAcrossPages;
+                        
                         const container = document.getElementById('bulk-ids-container');
                         container.innerHTML = '';
-                        const selectedCheckboxes = document.querySelectorAll('.patient-checkbox:checked');
-                        selectedCheckboxes.forEach(cb => {
-                            const input = document.createElement('input');
-                            input.type = 'hidden';
-                            input.name = 'patient_ids[]';
-                            input.value = cb.value;
-                            container.appendChild(input);
-                        });
+                        
+                        if (!selectAllAcrossPages) {
+                            const selectedCheckboxes = document.querySelectorAll('.patient-checkbox:checked');
+                            selectedCheckboxes.forEach(cb => {
+                                const input = document.createElement('input');
+                                input.type = 'hidden';
+                                input.name = 'patient_ids[]';
+                                input.value = cb.value;
+                                container.appendChild(input);
+                            });
+                        }
                     }
                     
                     form.submit();

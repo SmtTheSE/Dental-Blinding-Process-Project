@@ -70,7 +70,7 @@
                 {% for patient in patients.items %}
                 <tr>
                     <td style="text-align: center;">
-                        <input type="checkbox" name="patient_ids" value="{{ patient.id }}" class="patient-checkbox" onclick="updateBulkDeleteButton()" style="cursor: pointer;">
+                        <input type="checkbox" name="patient_ids" value="{{ patient.id }}" class="patient-checkbox" onclick="handleCheckboxClick(event, this)" style="cursor: pointer;">
                     </td>
                     <td style="font-weight: 700;">{{ patient.patient_id }}</td>
                     <td>{{ patient.name or '—' }}</td>

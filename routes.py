@@ -217,6 +217,9 @@ def manage_patients():
         if getattr(file, 'filename', '') != '':
             if hasattr(file, 'filename') and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
+                import uuid
+                unique_prefix = uuid.uuid4().hex
+                
                 if filename.endswith(('.csv',)):
                     # Process CSV upload
                     stream = StringIO(file.stream.read().decode("UTF8"), newline=None)
@@ -290,7 +293,7 @@ def manage_patients():
                     try:
                         # Save file to a temporary location to process with openpyxl
                         file.stream.seek(0)
-                        temp_file_path = os.path.join('/tmp', filename)
+                        temp_file_path = os.path.join('/tmp', f"{unique_prefix}_{filename}")
                         file.save(temp_file_path)
                         
                         # Load workbook
@@ -415,10 +418,10 @@ def manage_patients():
                             os.remove(temp_file_path)
                         flash(f'Error processing Excel file: {str(e)}')
                         
-        else:
+        elif 'patient_id' in request.form and request.form['patient_id'].strip():
             # Handle manual patient creation
                 
-            patient_id = request.form['patient_id']
+            patient_id = request.form['patient_id'].strip()
             name = request.form.get('name', '')
             actual_age = float(request.form['actual_age'])
             sex = request.form['sex']

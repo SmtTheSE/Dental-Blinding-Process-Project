@@ -255,6 +255,13 @@ def manage_patients():
                         workbook = openpyxl.load_workbook(temp_file_path, data_only=True)
                         worksheet = workbook.active
                         
+                        # Extract images from worksheet
+                        row_image_map = {}
+                        for img in getattr(worksheet, '_images', []):
+                            if hasattr(img, 'anchor') and hasattr(img.anchor, '_from'):
+                                row_idx = img.anchor._from.row + 1
+                                row_image_map[row_idx] = img
+                        
                         # Skip header row
                         first_row = True
                         row_count = 0
@@ -262,11 +269,10 @@ def manage_patients():
                         skipped_count = 0
                         
                         for row in worksheet.iter_rows(values_only=True):
+                            row_count += 1
                             if first_row:
                                 first_row = False
                                 continue
-                            
-                            row_count += 1
                             # Handle different Excel formats:
                             # Format 1 (Simple): ID, Name, Actual Age, Sex (4 columns)
                             # Format 2 (Full): ID, Name, Age, Sex, OPG, A code, D code, A Age, D Age, Actual age (10+ columns)
@@ -301,12 +307,45 @@ def manage_patients():
                                     # Check if patient already exists
                                     patient = Patient.query.filter_by(patient_id=patient_id).first()
                                     if not patient:
+                                        # Process Excel image if available
+                                        uploaded_opg_url = None
+                                        if row_count in row_image_map:
+                                            try:
+                                                from utils.storage import upload_image
+                                                import io
+                                                import datetime
+                                                
+                                                img_obj = row_image_map[row_count]
+                                                img_data = img_obj._data()
+                                                fmt = getattr(img_obj, 'format', 'jpeg')
+                                                if not fmt:
+                                                    fmt = 'jpeg'
+                                                fmt = fmt.lower()
+                                                if fmt == 'jpg':
+                                                    fmt = 'jpeg'
+                                                
+                                                class MockFile(io.BytesIO):
+                                                    def __init__(self, data, name, ctype):
+                                                        super().__init__(data)
+                                                        self.filename = name
+                                                        self.content_type = ctype
+                                                
+                                                fname = f"{patient_id}_opg_{int(datetime.datetime.now().timestamp())}.{fmt}"
+                                                file_obj = MockFile(img_data, fname, f"image/{fmt}")
+                                                
+                                                uploaded_opg_url = upload_image(file_obj, secure_filename(fname))
+                                            except Exception as e:
+                                                current_app.logger.error(f"Failed to upload image from Excel for {patient_id}: {str(e)}")
+                                        else:
+                                            # Use the textual opg_link if it's an external URL
+                                            uploaded_opg_url = opg_link if opg_link and str(opg_link).startswith('http') else None
+
                                         patient = Patient(
                                             patient_id=patient_id,
                                             name=name,
                                             actual_age=float(actual_age) if actual_age and actual_age.replace('.', '', 1).isdigit() else 0,
                                             sex=sex,
-                                            opg_link=opg_link if opg_link else None,  # Add OPG length
+                                            opg_link=uploaded_opg_url,
                                             code_a=code_a if code_a else None,  # Ensure None if empty
                                             code_b=code_b if code_b else None   # Ensure None if empty
                                         )

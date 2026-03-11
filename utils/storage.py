@@ -216,7 +216,11 @@ def generate_upload_url(filename: str) -> dict:
     
     try:
         response = requests.post(api_url, headers=headers)
-        response.raise_for_status()
+        if not response.ok:
+            error_msg = f"Supabase API returned {response.status_code}: {response.text}"
+            logger.error(error_msg)
+            raise Exception(error_msg)
+            
         data = response.json()
         
         # URL might be relative depending on the returned payload

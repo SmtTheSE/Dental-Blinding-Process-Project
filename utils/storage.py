@@ -223,16 +223,26 @@ def generate_upload_url(filename: str) -> dict:
             
         data = response.json()
         
-        # URL might be relative depending on the returned payload
-        # Ensure we return a full absolute URL for the frontend to upload to
-        upload_url = data.get('url')
-        if upload_url and upload_url.startswith('/'):
-            upload_url = f"{url}{upload_url}"
-            
+        # Build the full signed upload URL.
+        # Supabase returns a relative path like /object/upload/sign/... or
+        # /storage/v1/object/upload/sign/... — normalize it to include /storage/v1/
+        upload_url = data.get('url') or data.get('signedURL') or data.get('signed_url')
+        if upload_url:
+            if upload_url.startswith('/storage/v1'):
+                upload_url = f"{url}{upload_url}"
+            elif upload_url.startswith('/object'):
+                upload_url = f"{url}/storage/v1{upload_url}"
+            # If it's already absolute, leave it as-is
+        
+        # Also expose the token separately so the frontend can build its own URL if needed
+        token = data.get('token')
+        
+        logger.info(f"Generated signed upload URL for path: {secure_name}")
+        
         return {
             "signed_url": upload_url,
             "path": secure_name,
-            "token": data.get('token')
+            "token": token
         }
     except Exception as e:
         logger.error(f"Failed to generate upload URL: {e}")

@@ -57,10 +57,18 @@
         <h2>Import Data</h2>
         <p style="margin-bottom: 20px; font-size: 13px;">Upload CSV/Excel (Format: ID, Name, Age, Sex)</p>
 
-        <form method="POST" enctype="multipart/form-data" class="card">
+        <form id="import-form" method="POST" enctype="multipart/form-data" class="card">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" id="excel_supabase_path" name="excel_supabase_path" value="">
             <div class="form-group">
-                <input type="file" name="csv_file" accept=".csv,.xlsx,.xls" onchange="this.form.submit()">
+                <input type="file" id="csv_file" name="csv_file" accept=".csv,.xlsx,.xls" onchange="handleFileUpload(this)">
+            </div>
+            
+            <div id="upload-progress-container" style="display: none; margin-top: 15px;">
+                <p id="upload-status-text" style="font-size: 13px; color: var(--text-color); margin-bottom: 5px;">Uploading to secure storage...</p>
+                <div style="width: 100%; background-color: var(--border-color); border-radius: 4px; height: 8px; overflow: hidden;">
+                    <div id="upload-progress-bar" style="width: 0%; height: 100%; background-color: var(--primary-color); transition: width 0.3s; border-radius: 4px;"></div>
+                </div>
             </div>
         </form>
 
@@ -343,5 +351,73 @@
             }
         }
     });
+
+    // Handle large file uploads via pre-signed URL to bypass Vercel limits
+    async function handleFileUpload(input) {
+        if (!input.files || input.files.length === 0) return;
+        
+        const file = input.files[0];
+        const form = document.getElementById('import-form');
+        const progressContainer = document.getElementById('upload-progress-container');
+        const progressBar = document.getElementById('upload-progress-bar');
+        const statusText = document.getElementById('upload-status-text');
+        
+        // 1MB threshold for direct upload (Vercel limit is 4.5MB, safely trigger this earlier)
+        const FILE_SIZE_THRESHOLD = 1 * 1024 * 1024; 
+        
+        if (file.size > FILE_SIZE_THRESHOLD && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+            // Intercept and upload to Supabase directly
+            input.disabled = true;
+            progressContainer.style.display = 'block';
+            statusText.textContent = `File is large (${(file.size/1024/1024).toFixed(1)}MB). Securely bypassing limits...`;
+            progressBar.style.width = '10%';
+            
+            try {
+                // 1. Get Pre-signed URL
+                const urlResponse = await fetch(`/generate_upload_url?filename=${encodeURIComponent(file.name)}`);
+                if (!urlResponse.ok) {
+                    throw new Error("Failed to generate secure upload link.");
+                }
+                
+                const { signed_url, path } = await urlResponse.json();
+                progressBar.style.width = '30%';
+                statusText.textContent = "Uploading securely to Supabase...";
+                
+                // 2. Upload the file to Supabase via PUT request
+                const uploadResponse = await fetch(signed_url, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    },
+                    body: file
+                });
+                
+                if (!uploadResponse.ok) {
+                    throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+                }
+                
+                progressBar.style.width = '100%';
+                statusText.textContent = "Upload complete! Processing data...";
+                statusText.style.color = "var(--success-color)";
+                
+                // 3. Clear file input to avoid hitting Vercel limit and submit the path
+                document.getElementById('excel_supabase_path').value = path;
+                input.value = ""; // Clear
+                
+                // Submit form to backend
+                setTimeout(() => form.submit(), 500);
+                
+            } catch (err) {
+                console.error("Upload error:", err);
+                statusText.textContent = `Error: ${err.message}`;
+                statusText.style.color = "var(--error-color)";
+                progressBar.style.backgroundColor = "var(--error-color)";
+                input.disabled = false;
+            }
+        } else {
+            // Normal file, small enough for Vercel, just submit the form normally
+            form.submit();
+        }
+    }
 </script>
 {% endblock %}

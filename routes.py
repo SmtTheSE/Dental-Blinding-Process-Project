@@ -166,14 +166,56 @@ def renumber_patient_ids():
     
     db.session.commit()
 
+@main.route('/generate_upload_url', methods=['GET'])
+@role_required('supervisor')
+def get_upload_url():
+    filename = request.args.get('filename')
+    if not filename:
+        return {'error': 'Filename is required'}, 400
+        
+    try:
+        from utils.storage import generate_upload_url
+        data = generate_upload_url(filename)
+        return data
+    except Exception as e:
+        current_app.logger.error(f"Error generating upload url: {e}")
+        return {'error': str(e)}, 500
+
 @main.route('/patients', methods=['GET', 'POST'])
 @role_required('supervisor')
 def manage_patients():
     if request.method == 'POST':
-        # Handle file upload
-        if 'csv_file' in request.files and request.files['csv_file'].filename != '':
-            file = request.files['csv_file']
-            if file and allowed_file(file.filename):
+        # Handle file upload from Supabase or standard Form Upload
+        file = request.files.get('csv_file')
+        supabase_path = request.form.get('excel_supabase_path')
+        
+        if supabase_path:
+            # Bypass Vercel limit by fetching the file directly from Supabase to /tmp/
+            try:
+                from utils.storage import download_file, delete_image
+                file_content = download_file(supabase_path)
+                
+                # Mock the file object so the rest of the parsing logic works unaltered
+                filename = supabase_path.split('_')[-1]
+                ext = filename.split('.')[-1].lower() if '.' in filename else ''
+                
+                class MockFile:
+                    def __init__(self, content, name):
+                        from io import BytesIO
+                        self.stream = BytesIO(content)
+                        self.filename = name
+                    
+                    def save(self, path):
+                        with open(path, 'wb') as f:
+                            f.write(self.stream.getvalue())
+
+                file = MockFile(file_content, filename)
+            except Exception as e:
+                flash(f"Failed to fetch uploaded file from Supabase: {str(e)}")
+                return redirect(url_for('main.manage_patients'))
+                
+        if getattr(file, 'filename', '') != '':
+            if hasattr(file, 'filename') and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
                 if filename.endswith(('.csv',)):
                     # Process CSV upload
@@ -402,6 +444,15 @@ def manage_patients():
         
         # Renumber patient IDs after any addition
         renumber_patient_ids()
+        
+        # Cleanup temporary uploaded file from Supabase if used
+        supabase_path = request.form.get('excel_supabase_path')
+        if supabase_path:
+            try:
+                from utils.storage import delete_image
+                delete_image(supabase_path)
+            except Exception as e:
+                current_app.logger.error(f"Failed to delete temp Excel from Supabase: {e}")
         
         return redirect(url_for('main.manage_patients'))
     

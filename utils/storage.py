@@ -1,6 +1,7 @@
 import os
 from supabase import create_client, Client
 from datetime import datetime, timedelta
+import uuid
 
 def get_supabase_client() -> Client:
     """
@@ -190,3 +191,72 @@ def delete_image(filename: str) -> bool:
         
     except Exception as e:
         raise Exception(f"Failed to delete image from Supabase: {str(e)}")
+
+def generate_upload_url(filename: str) -> dict:
+    import requests
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_KEY")
+    
+    if not url or not key:
+        raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set")
+        
+    # Appending a UUID to ensure unique temporary files
+    secure_name = f"temp/{uuid.uuid4().hex}_{filename}"
+    bucket = "opg-images"
+    
+    api_url = f"{url}/storage/v1/object/upload/sign/{bucket}/{secure_name}"
+    
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        response = requests.post(api_url, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        
+        # URL might be relative depending on the returned payload
+        # Ensure we return a full absolute URL for the frontend to upload to
+        upload_url = data.get('url')
+        if upload_url and upload_url.startswith('/'):
+            upload_url = f"{url}{upload_url}"
+            
+        return {
+            "signed_url": upload_url,
+            "path": secure_name,
+            "token": data.get('token')
+        }
+    except Exception as e:
+        logger.error(f"Failed to generate upload URL: {e}")
+        raise
+
+def download_file(path: str) -> bytes:
+    import requests
+    import logging
+    logger = logging.getLogger(__name__)
+
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_KEY")
+
+    if not url or not key:
+         raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set")
+
+    bucket = "opg-images"
+    # Using Service Key allows us to download from a private bucket directly
+    download_url = f"{url}/storage/v1/object/{bucket}/{path}"
+    
+    headers = {
+        "Authorization": f"Bearer {key}"
+    }
+
+    try:
+        response = requests.get(download_url, headers=headers)
+        response.raise_for_status()
+        return response.content
+    except Exception as e:
+        logger.error(f"Failed to download file {path}: {e}")
+        raise

@@ -195,6 +195,7 @@ def manage_patients():
                         name = ''
                         actual_age = ''
                         sex = ''
+                        opg_link = ''
                         code_a = ''
                         code_b = ''
                         
@@ -211,6 +212,7 @@ def manage_patients():
                                 name = row[1]
                                 actual_age = row[9]
                                 sex = row[3]
+                                opg_link = row[4]
                                 code_a = row[5]
                                 code_b = row[6]
                             
@@ -222,6 +224,7 @@ def manage_patients():
                                     name=name,
                                     actual_age=float(actual_age) if actual_age else 0,
                                     sex=sex,
+                                    opg_link=opg_link if opg_link else None,
                                     code_a=code_a if code_a else None,
                                     code_b=code_b if code_b else None
                                 )
@@ -272,6 +275,7 @@ def manage_patients():
                             name = ''
                             actual_age = ''
                             sex = ''
+                            opg_link = ''
                             code_a = ''
                             code_b = ''
                             
@@ -288,6 +292,7 @@ def manage_patients():
                                     name = str(row[1]) if row[1] else ''
                                     actual_age = str(row[9]) if row[9] else ''  # Column 9 is actual age
                                     sex = str(row[3]) if row[3] else ''  # Column 3 is sex
+                                    opg_link = str(row[4]) if row[4] else ''  # Column 4 is OPG
                                     code_a = str(row[5]) if row[5] else ''  # Column 5 is A code
                                     code_b = str(row[6]) if row[6] else ''  # Column 6 is D code
                                 
@@ -301,6 +306,7 @@ def manage_patients():
                                             name=name,
                                             actual_age=float(actual_age) if actual_age and actual_age.replace('.', '', 1).isdigit() else 0,
                                             sex=sex,
+                                            opg_link=opg_link if opg_link else None,  # Add OPG length
                                             code_a=code_a if code_a else None,  # Ensure None if empty
                                             code_b=code_b if code_b else None   # Ensure None if empty
                                         )

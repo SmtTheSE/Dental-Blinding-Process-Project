@@ -11,13 +11,15 @@
     </div>
 
     <!-- Search Inline -->
-    <form method="GET" action="/analysis" style="display: flex; align-items: center; gap: 10px;">
-        <input type="text" name="search" placeholder="SEARCH PATIENT..." value="{{ search_query or '' }}"
-            style="width: 250px; text-transform: uppercase;">
+    <div class="search-input-group" style="display: flex; align-items: center; gap: 10px;">
+        <input type="text" id="smart-search" placeholder="SEARCH PATIENT..." value="{{ search_query or '' }}"
+            class="smart-search-input"
+            style="width: 300px; text-transform: uppercase;">
+        <div id="search-spinner" class="loading-spinner"></div>
         {% if search_query %}
         <a href="/analysis" class="btn" style="padding: 10px;">X</a>
         {% endif %}
-    </form>
+    </div>
 </div>
 
 <!-- Charts Section -->
@@ -46,8 +48,8 @@
 <div>
     <h2>Detailed Records</h2>
     {% if results %}
-    <div style="overflow-x: auto;">
-        <table>
+    <div id="analysis-table-container" style="overflow-x: auto;">
+        <table class="results-table">
             <thead>
                 <tr>
                     <th>Patient</th>
@@ -145,5 +147,58 @@ if (typeof showOPG !== 'function') {
         if (e.key === 'Escape') closeOPG();
     });
 }
+
+// Smart AJAX Search
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('smart-search');
+    const tableContainer = document.getElementById('analysis-table-container');
+    const spinner = document.getElementById('search-spinner');
+    let debounceTimer;
+
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value;
+            
+            clearTimeout(debounceTimer);
+            if (spinner) spinner.style.display = 'block';
+
+            debounceTimer = setTimeout(() => {
+                fetch(`/analysis?search=${encodeURIComponent(query)}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.text())
+                .then(html => {
+                    if (tableContainer) {
+                        tableContainer.innerHTML = html;
+                        
+                        // Add bouncy entry animation
+                        const rows = tableContainer.querySelectorAll('tbody tr');
+                        rows.forEach((row, index) => {
+                            row.style.opacity = '0';
+                            row.style.transform = 'scale(0.95)';
+                            setTimeout(() => {
+                                row.classList.add('row-enter');
+                            }, index * 30);
+                        });
+                    }
+                })
+                .catch(err => console.error('Search error:', err))
+                .finally(() => {
+                    if (spinner) spinner.style.display = 'none';
+                });
+            }, 300);
+        });
+
+        // Focus on '/'
+        document.addEventListener('keydown', (e) => {
+            if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+                e.preventDefault();
+                searchInput.focus();
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

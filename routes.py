@@ -527,12 +527,13 @@ def manage_patients():
     patients_query = Patient.query
     
     if search_query:
+        search_f = f"%{search_query}%"
         patients_query = patients_query.filter(
             db.or_(
-                Patient.patient_id.contains(search_query),
-                Patient.name.contains(search_query),
-                Patient.code_a.contains(search_query),
-                Patient.code_b.contains(search_query)
+                Patient.patient_id.ilike(search_f),
+                Patient.name.ilike(search_f),
+                Patient.code_a.ilike(search_f),
+                Patient.code_b.ilike(search_f)
             )
         )
     
@@ -880,10 +881,11 @@ def blinded_data():
     )
     
     if search_query:
+        search_f = f"%{search_query}%"
         patients_query = patients_query.filter(
             db.or_(
-                Patient.code_a.contains(search_query),
-                Patient.code_b.contains(search_query)
+                Patient.code_a.ilike(search_f),
+                Patient.code_b.ilike(search_f)
             )
         )
     
@@ -1255,12 +1257,13 @@ def analysis():
     patients_query = Patient.query
     
     if search_query:
+        search_f = f"%{search_query}%"
         patients_query = patients_query.filter(
             db.or_(
-                Patient.patient_id.contains(search_query),
-                Patient.name.contains(search_query),
-                Patient.code_a.contains(search_query),
-                Patient.code_b.contains(search_query)
+                Patient.patient_id.ilike(search_f),
+                Patient.name.ilike(search_f),
+                Patient.code_a.ilike(search_f),
+                Patient.code_b.ilike(search_f)
             )
         )
     

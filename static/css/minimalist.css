@@ -436,3 +436,62 @@ footer {
         gap: 40px;
     }
 }
+
+/* Smart Search & Bouncy UI */
+@keyframes bounceIn {
+    0% { transform: scale(0.95); opacity: 0; }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pulse-accent {
+    0% { box-shadow: 0 0 0 0 rgba(0, 0, 255, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(0, 0, 255, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 0, 255, 0); }
+}
+
+.search-input-group {
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.search-input-group:focus-within {
+    transform: translateY(-2px);
+}
+
+.smart-search-input {
+    transition: all 0.3s ease;
+    border-width: 2px !important;
+}
+
+.smart-search-input:focus {
+    animation: pulse-accent 1.5s infinite;
+    border-color: var(--accent-color) !important;
+}
+
+.results-table tr {
+    transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.row-enter {
+    animation: bounceIn 0.4s forwards;
+}
+
+.loading-spinner {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(0,0,0,0.1);
+    border-top: 2px solid var(--accent-color);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: none;
+}
+
+@keyframes spin {
+    0% { transform: translateY(-50%) rotate(0deg); }
+    100% { transform: translateY(-50%) rotate(360deg); }
+}

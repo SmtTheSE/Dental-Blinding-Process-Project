@@ -8,22 +8,22 @@
     <p>ANONYMIZED RECORDS FOR REVIEW</p>
 </div>
 
-<!-- Search -->
 <div style="margin-bottom: 40px; text-align: right;">
-    <form method="GET" action="/blinded_data" style="display: inline-flex; align-items: center; gap: 10px;">
-        <input type="text" name="search" placeholder="SEARCH CODE..." value="{{ search_query or '' }}"
-            style="width: 250px; text-transform: uppercase;">
+    <div class="search-input-group" style="display: inline-flex; align-items: center; gap: 10px;">
+        <input type="text" id="smart-search" placeholder="SEARCH CODE..." value="{{ search_query or '' }}"
+            class="smart-search-input"
+            style="width: 300px; text-transform: uppercase;">
+        <div id="search-spinner" class="loading-spinner"></div>
         {% if search_query %}
         <a href="/blinded_data" class="btn" style="padding: 10px;">X</a>
         {% endif %}
-    </form>
+    </div>
 </div>
 
 <!-- Data Table -->
 <div>
-    {% if entries.items %}
-    <div style="overflow-x: auto;">
-        <table>
+    <div id="blinded-table-container" style="overflow-x: auto;">
+        <table class="results-table">
             <thead>
                 <tr>
                     <th>Blind Code</th>
@@ -108,8 +108,61 @@ function closeOPG() {
     document.getElementById('opg-modal').style.display = 'none';
     document.getElementById('opg-modal-img').src = '';
 }
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeOPG();
-});
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeOPG();
+    });
+
+    // Smart AJAX Search
+    document.addEventListener('DOMContentLoaded', () => {
+        const searchInput = document.getElementById('smart-search');
+        const tableContainer = document.getElementById('blinded-table-container');
+        const spinner = document.getElementById('search-spinner');
+        let debounceTimer;
+
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value;
+                
+                clearTimeout(debounceTimer);
+                if (spinner) spinner.style.display = 'block';
+
+                debounceTimer = setTimeout(() => {
+                    fetch(`/blinded_data?search=${encodeURIComponent(query)}`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.text())
+                    .then(html => {
+                        if (tableContainer) {
+                            tableContainer.innerHTML = html;
+                            
+                            // Add bouncy entry animation
+                            const rows = tableContainer.querySelectorAll('tbody tr');
+                            rows.forEach((row, index) => {
+                                row.style.opacity = '0';
+                                row.style.transform = 'scale(0.95)';
+                                setTimeout(() => {
+                                    row.classList.add('row-enter');
+                                }, index * 30);
+                            });
+                        }
+                    })
+                    .catch(err => console.error('Search error:', err))
+                    .finally(() => {
+                        if (spinner) spinner.style.display = 'none';
+                    });
+                }, 300);
+            });
+
+            // Focus on '/'
+            document.addEventListener('keydown', (e) => {
+                if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    searchInput.focus();
+                }
+            });
+        }
+    });
 </script>
 {% endblock %}

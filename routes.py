@@ -291,132 +291,191 @@ def manage_patients():
                 elif filename.endswith(('.xlsx', '.xls')):
                     # Process Excel upload
                     try:
-                        # Save file to a temporary location to process with openpyxl
                         file.stream.seek(0)
                         temp_file_path = os.path.join('/tmp', f"{unique_prefix}_{filename}")
                         file.save(temp_file_path)
                         
-                        # Load workbook
-                        workbook = openpyxl.load_workbook(temp_file_path, data_only=True)
+                        # Load FORMULA version (keeps HYPERLINK formulas readable)
+                        workbook = openpyxl.load_workbook(temp_file_path, data_only=False)
                         worksheet = workbook.active
                         
-                        # Extract images from worksheet
+                        # Load DATA version (for computed numeric values: age etc.)
+                        workbook_data = openpyxl.load_workbook(temp_file_path, data_only=True)
+                        worksheet_data = workbook_data.active
+                        data_rows = {i: row for i, row in enumerate(worksheet_data.iter_rows(min_row=1, values_only=True), 1)}
+                        
+                        # Extract embedded images
                         row_image_map = {}
                         for img in getattr(worksheet, '_images', []):
                             if hasattr(img, 'anchor') and hasattr(img.anchor, '_from'):
-                                row_idx = img.anchor._from.row + 1
-                                row_image_map[row_idx] = img
-                        
-                        # Skip header row
+                                row_image_map[img.anchor._from.row + 1] = img
+
+                        def _norm_sex(raw):
+                            s = str(raw).strip().lower() if raw else ''
+                            if s in ('m', 'male'): return 'male'
+                            if s in ('f', 'female'): return 'female'
+                            return s
+
+                        def _safe_age(raw):
+                            try: return round(float(str(raw)), 2)
+                            except: return 0.0
+
+                        def _parse_opg_hyperlink(cell_val):
+                            """Extract local path or URL from Excel HYPERLINK formula."""
+                            import re
+                            s = str(cell_val).strip() if cell_val else ''
+                            if s in ('', 'None', '#VALUE!', '#REF!'): return None
+                            m = re.search(r'=HYPERLINK\(\"([^\"]+)\"', s, re.IGNORECASE)
+                            if m:
+                                raw = m.group(1)
+                                if raw.startswith('file:///'):
+                                    return raw[7:]   # -> /Users/...
+                                if raw.startswith('file://'):
+                                    return raw[6:]
+                                return raw
+                            if s.startswith('http://') or s.startswith('https://'):
+                                return s
+                            return None
+
                         first_row = True
                         row_count = 0
                         added_count = 0
                         skipped_count = 0
-                        
-                        for row in worksheet.iter_rows(values_only=True):
+                        opg_fail_count = 0
+
+                        for formula_row in worksheet.iter_rows(values_only=True):
                             row_count += 1
                             if first_row:
                                 first_row = False
                                 continue
-                            # Handle different Excel formats:
-                            # Format 1 (Simple): ID, Name, Actual Age, Sex (4 columns)
-                            # Format 2 (Full): ID, Name, Age, Sex, OPG, A code, D code, A Age, D Age, Actual age (10+ columns)
-                            
-                            patient_id = ''
-                            name = ''
-                            actual_age = ''
-                            sex = ''
-                            opg_link = ''
+
+                            # Use computed values for data (age, name, id, sex)
+                            data_row = data_rows.get(row_count, formula_row)
+
+                            if not data_row or len(data_row) < 4:
+                                continue
+
+                            patient_id = str(data_row[0]).strip() if data_row[0] is not None else ''
+                            name       = str(data_row[1]).strip() if data_row[1] is not None else ''
+                            actual_age = _safe_age(data_row[2])
+                            sex        = _norm_sex(data_row[3])
                             code_a = ''
                             code_b = ''
-                            
-                            if len(row) >= 4:  # Simple format
-                                patient_id = str(row[0]) if row[0] else ''
-                                name = str(row[1]) if row[1] else ''
-                                actual_age = str(row[2]) if row[2] else ''
-                                sex = str(row[3]) if row[3] else ''
-                                
-                                # Check if it's the full format (10+ columns)
-                                if len(row) >= 10:
-                                    # Override with full format data
-                                    patient_id = str(row[0]) if row[0] else ''
-                                    name = str(row[1]) if row[1] else ''
-                                    actual_age = str(row[9]) if row[9] else ''  # Column 9 is actual age
-                                    sex = str(row[3]) if row[3] else ''  # Column 3 is sex
-                                    opg_link = str(row[4]) if row[4] else ''  # Column 4 is OPG
-                                    code_a = str(row[5]) if row[5] else ''  # Column 5 is A code
-                                    code_b = str(row[6]) if row[6] else ''  # Column 6 is D code
-                                
-                                # Check if we have a patient_id
-                                if patient_id:
-                                    # Check if patient already exists
-                                    patient = Patient.query.filter_by(patient_id=patient_id).first()
-                                    if not patient:
-                                        # Process Excel image if available
-                                        uploaded_opg_url = None
-                                        if row_count in row_image_map:
-                                            try:
+
+                            # OPG: read formula cell for hyperlink; fallback to data cell string
+                            opg_formula_val = formula_row[4] if len(formula_row) > 4 else None
+                            opg_data_val    = data_row[4]   if len(data_row)    > 4 else None
+
+                            # Full format (10+ cols): override age and codes
+                            if len(data_row) >= 10:
+                                actual_age = _safe_age(data_row[9])
+                                code_a = str(data_row[5]).strip() if data_row[5] else ''
+                                code_b = str(data_row[6]).strip() if data_row[6] else ''
+
+                            if not patient_id or patient_id.lower() in ('none', 'nan'):
+                                continue
+
+                            existing = Patient.query.filter_by(patient_id=patient_id).first()
+                            if existing:
+                                skipped_count += 1
+                                continue
+
+                            # --- OPG upload priority ---
+                            uploaded_opg_url = None
+
+                            # Priority 1: Embedded image
+                            if row_count in row_image_map:
+                                try:
+                                    from utils.storage import upload_image
+                                    import io, datetime as dt
+                                    img_obj  = row_image_map[row_count]
+                                    img_data = img_obj._data()
+                                    fmt      = (getattr(img_obj, 'format', None) or 'jpeg').lower()
+                                    if fmt == 'jpg': fmt = 'jpeg'
+                                    ts  = int(dt.datetime.now().timestamp())
+                                    fname = f"{patient_id}_opg_{ts}.{fmt}"
+
+                                    class _EmbedFile(io.BytesIO):
+                                        def __init__(self, data, name, ctype):
+                                            super().__init__(data)
+                                            self.filename = name
+                                            self.content_type = ctype
+
+                                    uploaded_opg_url = upload_image(_EmbedFile(img_data, fname, f"image/{fmt}"), secure_filename(fname))
+                                except Exception as e:
+                                    current_app.logger.error(f"Embedded OPG upload failed for {patient_id}: {e}")
+                                    opg_fail_count += 1
+
+                            # Priority 2: HYPERLINK formula → local file
+                            if not uploaded_opg_url:
+                                opg_path = _parse_opg_hyperlink(opg_formula_val)
+                                if opg_path:
+                                    if opg_path.startswith('http'):
+                                        uploaded_opg_url = opg_path
+                                    else:
+                                        try:
+                                            if os.path.exists(opg_path):
                                                 from utils.storage import upload_image
-                                                import io
-                                                import datetime
-                                                
-                                                img_obj = row_image_map[row_count]
-                                                img_data = img_obj._data()
-                                                fmt = getattr(img_obj, 'format', 'jpeg')
-                                                if not fmt:
-                                                    fmt = 'jpeg'
-                                                fmt = fmt.lower()
-                                                if fmt == 'jpg':
-                                                    fmt = 'jpeg'
-                                                
-                                                class MockFile(io.BytesIO):
+                                                import io, datetime as dt
+                                                with open(opg_path, 'rb') as fimg:
+                                                    img_data = fimg.read()
+                                                ext = os.path.splitext(opg_path)[1].lstrip('.').lower() or 'jpeg'
+                                                if ext == 'jpg': ext = 'jpeg'
+                                                ts  = int(dt.datetime.now().timestamp())
+                                                fname = f"{patient_id}_opg_{ts}.{ext}"
+
+                                                class _LocalFile(io.BytesIO):
                                                     def __init__(self, data, name, ctype):
                                                         super().__init__(data)
                                                         self.filename = name
                                                         self.content_type = ctype
-                                                
-                                                fname = f"{patient_id}_opg_{int(datetime.datetime.now().timestamp())}.{fmt}"
-                                                file_obj = MockFile(img_data, fname, f"image/{fmt}")
-                                                
-                                                uploaded_opg_url = upload_image(file_obj, secure_filename(fname))
-                                            except Exception as e:
-                                                current_app.logger.error(f"Failed to upload image from Excel for {patient_id}: {str(e)}")
-                                        else:
-                                            # Use the textual opg_link if it's an external URL
-                                            uploaded_opg_url = opg_link if opg_link and str(opg_link).startswith('http') else None
 
-                                        patient = Patient(
-                                            patient_id=patient_id,
-                                            name=name,
-                                            actual_age=float(actual_age) if actual_age and actual_age.replace('.', '', 1).isdigit() else 0,
-                                            sex=sex,
-                                            opg_link=uploaded_opg_url,
-                                            code_a=code_a if code_a else None,  # Ensure None if empty
-                                            code_b=code_b if code_b else None   # Ensure None if empty
-                                        )
-                                        db.session.add(patient)
-                                        added_count += 1
-                                        # Commit in batches to handle large datasets
-                                        if added_count % 100 == 0:
-                                            db.session.flush()
-                                    else:
-                                        skipped_count += 1
-                        
+                                                uploaded_opg_url = upload_image(_LocalFile(img_data, fname, f"image/{ext}"), secure_filename(fname))
+                                            else:
+                                                current_app.logger.warning(f"OPG local file missing for {patient_id}: {opg_path}")
+                                                opg_fail_count += 1
+                                        except Exception as e:
+                                            current_app.logger.error(f"Local OPG upload failed for {patient_id}: {e}")
+                                            opg_fail_count += 1
+
+                            # Priority 3: opg cell is a plain http string (data_only computed value)
+                            if not uploaded_opg_url and opg_data_val:
+                                s = str(opg_data_val).strip()
+                                if s.startswith('http://') or s.startswith('https://'):
+                                    uploaded_opg_url = s
+
+                            patient = Patient(
+                                patient_id=patient_id,
+                                name=name,
+                                actual_age=actual_age,
+                                sex=sex,
+                                opg_link=uploaded_opg_url,
+                                code_a=code_a if code_a else None,
+                                code_b=code_b if code_b else None
+                            )
+                            db.session.add(patient)
+                            added_count += 1
+                            if added_count % 50 == 0:
+                                db.session.flush()
+
                         workbook.close()
-                        # Clean up temp file
+                        workbook_data.close()
                         os.remove(temp_file_path)
-                        
+
                         try:
                             db.session.commit()
-                            flash(f'Excel import successful! Added: {added_count}, Skipped (already exist): {skipped_count}')
+                            msg = f'Excel import successful! Added: {added_count}, Skipped (already exist): {skipped_count}'
+                            if opg_fail_count:
+                                msg += f' | OPG not uploaded for {opg_fail_count} row(s) — local file not accessible on server. Use [UPLOAD] to add OPG individually.'
+                            flash(msg)
                         except Exception as e:
                             db.session.rollback()
                             flash(f'Error importing Excel: {str(e)}')
                     except Exception as e:
-                        # Clean up temp file on error
                         if 'temp_file_path' in locals() and os.path.exists(temp_file_path):
                             os.remove(temp_file_path)
                         flash(f'Error processing Excel file: {str(e)}')
+
                         
         elif 'patient_id' in request.form and request.form['patient_id'].strip():
             # Handle manual patient creation

@@ -10,15 +10,14 @@
         <p style="margin: 0; font-size: 14px;">Database Management</p>
     </div>
 
-    <div class="search-input-group" style="display: inline-flex; align-items: center; gap: 10px;">
-        <input type="text" id="smart-search" placeholder="SEARCH ID/NAME..." value="{{ search_query or '' }}"
-            class="smart-search-input"
-            style="width: 300px; text-transform: uppercase;">
-        <div id="search-spinner" class="loading-spinner"></div>
+    <!-- Search -->
+    <form method="GET" action="/patients" style="display: flex; align-items: center; gap: 10px;">
+        <input type="text" name="search" placeholder="SEARCH ID/NAME..." value="{{ search_query or '' }}"
+            style="width: 250px; text-transform: uppercase;">
         {% if search_query %}
-        <a href="/patients" id="search-clear" class="btn" style="padding: 10px;">X</a>
+        <a href="/patients" class="btn" style="padding: 10px;">X</a>
         {% endif %}
-    </div>
+    </form>
 </div>
 
 <!-- Forms Section -->
@@ -92,7 +91,7 @@
 
     {% if patients.items %}
     <div id="patients-table-container" style="overflow-x: auto;">
-        <table class="results-table">
+        <table>
             <thead>
                 <tr>
                     <th style="width: 40px; text-align: center;">
@@ -427,64 +426,6 @@
             form.submit();
         }
     }
-
-    // Smart AJAX Search
-    document.addEventListener('DOMContentLoaded', () => {
-        const searchInput = document.getElementById('smart-search');
-        const tableContainer = document.getElementById('patients-table-container');
-        const spinner = document.getElementById('search-spinner');
-        let debounceTimer;
-
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                const query = e.target.value;
-                
-                clearTimeout(debounceTimer);
-                if (spinner) spinner.style.display = 'block';
-
-                debounceTimer = setTimeout(() => {
-                    fetch(`/patients?search=${encodeURIComponent(query)}`, {
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    })
-                    .then(response => response.text())
-                    .then(html => {
-                        if (tableContainer) {
-                            tableContainer.innerHTML = html;
-                            
-                            // Add bouncy entry animation to new rows
-                            const rows = tableContainer.querySelectorAll('tbody tr');
-                            rows.forEach((row, index) => {
-                                row.style.opacity = '0';
-                                row.style.transform = 'scale(0.95)';
-                                setTimeout(() => {
-                                    row.classList.add('row-enter');
-                                }, index * 30);
-                            });
-
-                            // Re-initialize checkbox listeners and banner if in current content
-                            updateBulkDeleteButton();
-                        }
-                    })
-                    .catch(err => console.error('Search error:', err))
-                    .finally(() => {
-                        if (spinner) spinner.style.display = 'none';
-                    });
-                }, 300);
-            });
-
-            // Smoothly focus search on '/' key press like big search engines
-            document.addEventListener('keydown', (e) => {
-                if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-                    e.preventDefault();
-                    searchInput.focus();
-                    searchInput.classList.add('bouncy-pulse');
-                    setTimeout(() => searchInput.classList.remove('bouncy-pulse'), 500);
-                }
-            });
-        }
-    });
 </script>
 {% endblock %}
 

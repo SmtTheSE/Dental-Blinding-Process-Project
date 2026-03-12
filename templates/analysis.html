@@ -53,6 +53,7 @@
                     <th>Patient</th>
                     <th>Actual Age</th>
                     <th>Sex</th>
+                    <th>OPG</th>
                     <th>AlQahtani Est.</th>
                     <th>Demirjian Est.</th>
                     <th>Difference</th>
@@ -67,6 +68,14 @@
                     </td>
                     <td>{{ result.actual_age }}</td>
                     <td style="text-transform: uppercase;">{{ result.sex }}</td>
+                    <td>
+                        {% if result.opg_link %}
+                        <a href="#" onclick="showOPG('{{ result.opg_link }}', '{{ result.patient_id }}'); return false;"
+                           style="color: var(--accent-color);">[VIEW]</a>
+                        {% else %}
+                        <span style="color: var(--error-color); font-size: 11px;">[NO OPG]</span>
+                        {% endif %}
+                    </td>
                     <td>{{ result.alqahtani_estimated_age or '—' }}</td>
                     <td>{{ result.demirjian_estimated_age or '—' }}</td>
                     <td>
@@ -106,4 +115,35 @@
 <div style="margin-top: 60px; text-align: center;">
     <a href="{{ url_for('main.export_patients') }}" class="btn" target="_blank">Download Excel Report</a>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- OPG Lightbox Modal -->
+<div id="opg-modal" onclick="closeOPG()" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.82); z-index:9999; align-items:center; justify-content:center;">
+    <div onclick="event.stopPropagation()" style="position:relative; max-width:90vw; max-height:90vh; background:#111; border-radius:8px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.8);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:#1a1a1a; border-bottom:1px solid #333;">
+            <span id="opg-modal-title" style="font-size:13px; font-family:monospace; color:#ccc;"></span>
+            <button onclick="closeOPG()" style="background:none; border:none; color:#aaa; font-size:20px; cursor:pointer; line-height:1;">&#x2715;</button>
+        </div>
+        <img id="opg-modal-img" src="" alt="OPG" style="display:block; max-width:90vw; max-height:80vh; object-fit:contain;">
+    </div>
+</div>
+
+<script>
+if (typeof showOPG !== 'function') {
+    window.showOPG = function(url, id) {
+        document.getElementById('opg-modal-img').src = url;
+        document.getElementById('opg-modal-title').textContent = 'OPG — PATIENT: ' + id;
+        const modal = document.getElementById('opg-modal');
+        modal.style.display = 'flex';
+    };
+    window.closeOPG = function() {
+        document.getElementById('opg-modal').style.display = 'none';
+        document.getElementById('opg-modal-img').src = '';
+    };
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeOPG();
+    });
+}
+</script>
 {% endblock %}

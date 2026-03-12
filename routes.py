@@ -919,12 +919,33 @@ def blinded_data():
     # Shuffle the data
     random.shuffle(blinded_entries)
     
+    # Create a dummy pagination object since the template expects one
+    class DummyPagination:
+        def __init__(self, items, page, pages, has_prev, has_next, prev_num, next_num):
+            self.items = items
+            self.page = page
+            self.pages = pages
+            self.has_prev = has_prev
+            self.has_next = has_next
+            self.prev_num = prev_num
+            self.next_num = next_num
+
+    dummy_pagination = DummyPagination(
+        items=blinded_entries,
+        page=patients.page,
+        pages=patients.pages,
+        has_prev=patients.has_prev,
+        has_next=patients.has_next,
+        prev_num=patients.prev_num,
+        next_num=patients.next_num
+    )
+    
     # Check if it's an AJAX request
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         # Return only the content part for AJAX requests
-        return render_template('blinded_data_content.html', entries=blinded_entries, search_query=search_query, patients=patients)
+        return render_template('blinded_data_content.html', entries=dummy_pagination, search_query=search_query, patients=patients)
     
-    return render_template('blinded_data.html', entries=blinded_entries, search_query=search_query, patients=patients)
+    return render_template('blinded_data.html', entries=dummy_pagination, search_query=search_query, patients=patients)
 
 @main.route('/estimate_age', methods=['GET', 'POST'])
 @role_required('pi')

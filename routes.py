@@ -317,7 +317,7 @@ def manage_patients():
                             return s
 
                         def _safe_age(raw):
-                            try: return round(float(str(raw)), 2)
+                            try: return round(float(str(raw)), 1)
                             except: return 0.0
 
                         def _parse_opg_hyperlink(cell_val):

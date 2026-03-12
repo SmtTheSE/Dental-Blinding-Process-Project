@@ -79,6 +79,8 @@
                     <td>
                         {% if patient.opg_link %}
                         <span style="color: var(--success-color);">[YES]</span>
+                        <a href="#" onclick="showOPG('{{ patient.opg_link }}', '{{ patient.name or patient.patient_id }}'); return false;"
+                           style="margin-left: 6px; font-size: 11px; color: var(--accent-color);">[VIEW]</a>
                         {% else %}
                         <span style="color: var(--error-color);">[NO]</span>
                         {% endif %}
@@ -123,3 +125,30 @@
     </div>
     {% endif %}
 </div>
+
+<!-- OPG Lightbox Modal -->
+<div id="opg-modal" onclick="closeOPG()" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.82); z-index:9999; align-items:center; justify-content:center;">
+    <div onclick="event.stopPropagation()" style="position:relative; max-width:90vw; max-height:90vh; background:#111; border-radius:8px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.8);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:#1a1a1a; border-bottom:1px solid #333;">
+            <span id="opg-modal-title" style="font-size:13px; font-family:monospace; color:#ccc;"></span>
+            <button onclick="closeOPG()" style="background:none; border:none; color:#aaa; font-size:20px; cursor:pointer; line-height:1;">&#x2715;</button>
+        </div>
+        <img id="opg-modal-img" src="" alt="OPG" style="display:block; max-width:90vw; max-height:80vh; object-fit:contain;">
+    </div>
+</div>
+
+<script>
+function showOPG(url, name) {
+    document.getElementById('opg-modal-img').src = url;
+    document.getElementById('opg-modal-title').textContent = 'OPG — ' + name;
+    const modal = document.getElementById('opg-modal');
+    modal.style.display = 'flex';
+}
+function closeOPG() {
+    document.getElementById('opg-modal').style.display = 'none';
+    document.getElementById('opg-modal-img').src = '';
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeOPG();
+});
+</script>

@@ -1,0 +1,461 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Patients - Dental Age Estimation System{% endblock %}
+
+{% block content %}
+<div class="page-header"
+    style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; border-bottom: 2px solid var(--text-color); padding-bottom: 20px;">
+    <div>
+        <h1 style="margin: 0;">Patients</h1>
+        <p style="margin: 0; font-size: 14px;">Database Management</p>
+    </div>
+
+    <!-- Search -->
+    <form method="GET" action="/patients" style="display: flex; align-items: center; gap: 10px;">
+        <input type="text" name="search" placeholder="SEARCH ID/NAME..." value="{{ search_query or '' }}"
+            style="width: 250px; text-transform: uppercase;">
+        {% if search_query %}
+        <a href="/patients" class="btn" style="padding: 10px;">X</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Forms Section -->
+<div class="patients-grid">
+    <!-- Add Patient -->
+    <div>
+        <h2>Add Patient</h2>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="form-group">
+                <label>Patient ID</label>
+                <input type="text" name="patient_id" required placeholder="P-001">
+            </div>
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" name="name" placeholder="Optional">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="form-group">
+                    <label>Age</label>
+                    <input type="number" step="0.1" name="actual_age" required placeholder="0.0">
+                </div>
+                <div class="form-group">
+                    <label>Sex</label>
+                    <select name="sex">
+                        <option value="male">MALE</option>
+                        <option value="female">FEMALE</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">+ Add Record</button>
+        </form>
+    </div>
+
+    <!-- Import -->
+    <div>
+        <h2>Import Data</h2>
+        <p style="margin-bottom: 20px; font-size: 13px;">Upload CSV/Excel (Format: ID, Name, Age, Sex)</p>
+
+        <form id="import-form" method="POST" enctype="multipart/form-data" class="card">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" id="excel_supabase_path" name="excel_supabase_path" value="">
+            <div class="form-group">
+                <input type="file" id="csv_file" name="csv_file" accept=".csv,.xlsx,.xls" onchange="handleFileUpload(this)">
+            </div>
+            
+            <div id="upload-progress-container" style="display: none; margin-top: 15px;">
+                <p id="upload-status-text" style="font-size: 13px; color: var(--text-color); margin-bottom: 5px;">Uploading to secure storage...</p>
+                <div style="width: 100%; background-color: var(--border-color); border-radius: 4px; height: 8px; overflow: hidden;">
+                    <div id="upload-progress-bar" style="width: 0%; height: 100%; background-color: var(--primary-color); transition: width 0.3s; border-radius: 4px;"></div>
+                </div>
+            </div>
+        </form>
+
+        <div style="margin-top: 20px; display: flex; gap: 10px; align-items: center;">
+            <a href="/assign_codes" class="btn">Assign Blinding Codes &rarr;</a>
+            <button id="bulk-delete-btn" class="btn" style="color: var(--error-color); border-color: var(--error-color); opacity: 0.5; cursor: not-allowed;" disabled onclick="confirmBulkDelete()">Bulk Delete Selected [0]</button>
+        </div>
+    </div>
+</div>
+
+<!-- Patients List -->
+<div>
+    <h2>Database Records (Total: {{ patients.total }})</h2>
+
+    <div id="select-all-banner" style="display: none; background: var(--bg-color-alt, #f5f5f5); border: 1px solid var(--border-color); padding: 10px; margin-bottom: 20px; text-align: center; font-size: 14px;">
+        <span id="select-all-text">All {{ patients.items|length }} patients on this page are selected.</span>
+        <button type="button" id="select-all-db-btn" onclick="selectAllInDB(true)" style="background: none; border: none; color: var(--primary-color); cursor: pointer; font-weight: bold; text-decoration: underline; padding: 0 5px;">Select all {{ patients.total }} patients in database</button>
+        <button type="button" id="clear-selection-btn" onclick="selectAllInDB(false)" style="display: none; background: none; border: none; color: var(--primary-color); cursor: pointer; font-weight: bold; text-decoration: underline; padding: 0 5px;">Clear selection</button>
+    </div>
+
+    {% if patients.items %}
+    <div id="patients-table-container" style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 40px; text-align: center;">
+                        <input type="checkbox" id="select-all-checkbox" onclick="toggleSelectAll(this)" style="cursor: pointer;">
+                    </th>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Age</th>
+                    <th>Sex</th>
+                    <th>OPG</th>
+                    <th>Blind A</th>
+                    <th>Blind B</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for patient in patients.items %}
+                <tr>
+                    <td style="text-align: center;">
+                        <input type="checkbox" name="patient_ids" value="{{ patient.id }}" class="patient-checkbox" onclick="handleCheckboxClick(event, this)" style="cursor: pointer;">
+                    </td>
+                    <td style="font-weight: 700;">{{ patient.patient_id }}</td>
+                    <td>{{ patient.name or '—' }}</td>
+                    <td>{{ patient.actual_age }}</td>
+                    <td style="text-transform: uppercase;">{{ patient.sex }}</td>
+                    <td>
+                        {% if patient.opg_link %}
+                        <span style="color: var(--success-color);">[YES]</span>
+                        <a href="#" onclick="showOPG('{{ patient.opg_link }}', '{{ patient.patient_id }}'); return false;"
+                           style="margin-left: 6px; font-size: 11px; color: var(--accent-color);">[VIEW]</a>
+                        {% else %}
+                        <span style="color: var(--error-color);">[NO]</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-family: monospace;">{{ patient.code_a or '—' }}</td>
+                    <td style="font-family: monospace;">{{ patient.code_b or '—' }}</td>
+                    <td style="text-align: right;">
+                        <a href="/upload_opg/{{ patient.id }}" style="margin-right: 10px;">[UPLOAD]</a>
+                        <a href="/patients/update/{{ patient.id }}" style="margin-right: 10px;">[EDIT]</a>
+                        <button type="button"
+                            onclick="confirmDelete('{{ url_for('main.delete_patient', patient_id=patient.id) }}')"
+                            style="background: none; border: none; color: var(--error-color); cursor: pointer; font-family: inherit; font-size: inherit; padding: 0;">[DEL]</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if patients.pages > 1 %}
+    <div
+        style="display: flex; justify-content: center; gap: 20px; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+        {% if patients.has_prev %}
+        <a href="{{ url_for('main.manage_patients', page=patients.prev_num, search=search_query) }}">&larr; Previous</a>
+        {% endif %}
+
+        <span>Page {{ patients.page }} / {{ patients.pages }}</span>
+
+        {% if patients.has_next %}
+        <a href="{{ url_for('main.manage_patients', page=patients.next_num, search=search_query) }}">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div style="padding: 40px; text-align: center; border: 1px dashed var(--border-color);">
+        <p>NO RECORDS FOUND.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Global hidden delete form -->
+<form id="global-delete-form" method="POST" style="display: none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="select_all_matching" id="select-all-matching-input" value="false">
+    <input type="hidden" name="search_query" value="{{ search_query or '' }}">
+    <div id="bulk-ids-container"></div>
+</form>
+
+<script>
+    let deleteUrlTarget = null;
+
+    function confirmDelete(deleteUrl) {
+        // Show custom modal instead of native confirm
+        const modal = document.getElementById('custom-modal');
+        const msg = document.getElementById('modal-message');
+        msg.textContent = 'Are you sure you want to delete this patient? This action cannot be undone.';
+
+        // Store the URL
+        deleteUrlTarget = deleteUrl;
+        isBulkDelete = false;
+
+        // Show modal
+        modal.style.display = 'flex';
+    }
+
+    function confirmBulkDelete() {
+        const selectedCheckboxes = document.querySelectorAll('.patient-checkbox:checked');
+        if (selectedCheckboxes.length === 0) return;
+
+        const modal = document.getElementById('custom-modal');
+        const msg = document.getElementById('modal-message');
+        msg.textContent = `Are you sure you want to delete ${selectedCheckboxes.length} selected patient(s)? This action cannot be undone and will delete all associated data.`;
+
+        deleteUrlTarget = "{{ url_for('main.bulk_delete_patients') }}";
+        isBulkDelete = true;
+
+        modal.style.display = 'flex';
+    }
+
+    function toggleSelectAll(selectAllCheckbox) {
+        const checkboxes = document.querySelectorAll('.patient-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = selectAllCheckbox.checked;
+        });
+        
+        selectAllAcrossPages = false; // Reset when manual toggle happens
+        updateBulkDeleteButton();
+    }
+
+    let lastChecked = null;
+    let selectAllAcrossPages = false;
+    const totalPatientsInDB = {{ patients.total }};
+
+    function handleCheckboxClick(e, checkbox) {
+        if (!lastChecked) {
+            lastChecked = checkbox;
+            updateBulkDeleteButton();
+            return;
+        }
+
+        if (e.shiftKey) {
+            const checkboxes = Array.from(document.querySelectorAll('.patient-checkbox'));
+            const start = checkboxes.indexOf(checkbox);
+            const end = checkboxes.indexOf(lastChecked);
+            
+            checkboxes.slice(Math.min(start, end), Math.max(start, end) + 1)
+                .forEach(cb => cb.checked = lastChecked.checked);
+        }
+
+        lastChecked = checkbox;
+        selectAllAcrossPages = false; // Reset if any manual change
+        updateBulkDeleteButton();
+    }
+
+    function selectAllInDB(select) {
+        selectAllAcrossPages = select;
+        const banner = document.getElementById('select-all-banner');
+        const selectAllBtn = document.getElementById('select-all-db-btn');
+        const clearBtn = document.getElementById('clear-selection-btn');
+        const bannerText = document.getElementById('select-all-text');
+        const headerCheckbox = document.getElementById('select-all-checkbox');
+        
+        if (select) {
+            bannerText.textContent = `All ${totalPatientsInDB} patients in database are selected.`;
+            selectAllBtn.style.display = 'none';
+            clearBtn.style.display = 'inline-block';
+            headerCheckbox.checked = true;
+            document.querySelectorAll('.patient-checkbox').forEach(cb => cb.checked = true);
+        } else {
+            banner.style.display = 'none';
+            headerCheckbox.checked = false;
+            document.querySelectorAll('.patient-checkbox').forEach(cb => cb.checked = false);
+        }
+        updateBulkDeleteButton();
+    }
+
+    function updateBulkDeleteButton() {
+        const selectedCheckboxes = document.querySelectorAll('.patient-checkbox:checked');
+        const countOnPage = selectedCheckboxes.length;
+        const allOnPage = document.querySelectorAll('.patient-checkbox').length;
+        const btn = document.getElementById('bulk-delete-btn');
+        const selectAll = document.getElementById('select-all-checkbox');
+        const banner = document.getElementById('select-all-banner');
+        
+        let displayCount = selectAllAcrossPages ? totalPatientsInDB : countOnPage;
+
+        if (displayCount > 0) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+            btn.textContent = `Bulk Delete Selected [${displayCount}]`;
+        } else {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+            btn.textContent = `Bulk Delete Selected [0]`;
+        }
+
+        // Show/hide select-all banner
+        if (banner) {
+            if (countOnPage === allOnPage && allOnPage > 0 && totalPatientsInDB > allOnPage && !selectAllAcrossPages) {
+                banner.style.display = 'block';
+                document.getElementById('select-all-text').textContent = `All ${allOnPage} patients on this page are selected.`;
+                document.getElementById('select-all-db-btn').style.display = 'inline-block';
+                document.getElementById('clear-selection-btn').style.display = 'none';
+            } else if (!selectAllAcrossPages) {
+                banner.style.display = 'none';
+            }
+        }
+
+        // Update select-all state
+        if (selectAll) {
+            selectAll.checked = countOnPage === allOnPage && allOnPage > 0;
+            selectAll.indeterminate = countOnPage > 0 && countOnPage < allOnPage;
+        }
+    }
+
+    let isBulkDelete = false;
+
+    // Modal Event Listeners
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById('custom-modal');
+        const cancelBtn = document.getElementById('modal-cancel');
+        const confirmBtn = document.getElementById('modal-confirm');
+
+        if (cancelBtn) {
+            cancelBtn.onclick = function () {
+                modal.style.display = 'none';
+                deleteUrlTarget = null;
+            };
+        }
+
+        if (confirmBtn) {
+            confirmBtn.onclick = function () {
+                if (deleteUrlTarget) {
+                    var form = document.getElementById('global-delete-form');
+                    form.action = deleteUrlTarget;
+                    
+                    if (isBulkDelete) {
+                        document.getElementById('select-all-matching-input').value = selectAllAcrossPages;
+                        
+                        const container = document.getElementById('bulk-ids-container');
+                        container.innerHTML = '';
+                        
+                        if (!selectAllAcrossPages) {
+                            const selectedCheckboxes = document.querySelectorAll('.patient-checkbox:checked');
+                            selectedCheckboxes.forEach(cb => {
+                                const input = document.createElement('input');
+                                input.type = 'hidden';
+                                input.name = 'patient_ids[]';
+                                input.value = cb.value;
+                                container.appendChild(input);
+                            });
+                        }
+                    }
+                    
+                    form.submit();
+                }
+                modal.style.display = 'none';
+            };
+        }
+
+        // Close on outside click
+        window.onclick = function (event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+    });
+
+    // Handle large file uploads via pre-signed URL to bypass Vercel limits
+    async function handleFileUpload(input) {
+        if (!input.files || input.files.length === 0) return;
+        
+        const file = input.files[0];
+        const form = document.getElementById('import-form');
+        const progressContainer = document.getElementById('upload-progress-container');
+        const progressBar = document.getElementById('upload-progress-bar');
+        const statusText = document.getElementById('upload-status-text');
+        
+        // 1MB threshold for direct upload (Vercel limit is 4.5MB, safely trigger this earlier)
+        const FILE_SIZE_THRESHOLD = 1 * 1024 * 1024; 
+        
+        if (file.size > FILE_SIZE_THRESHOLD && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+            // Intercept and upload to Supabase directly
+            input.disabled = true;
+            progressContainer.style.display = 'block';
+            statusText.textContent = `File is large (${(file.size/1024/1024).toFixed(1)}MB). Securely bypassing limits...`;
+            progressBar.style.width = '10%';
+            
+            try {
+                // 1. Get Pre-signed URL
+                const urlResponse = await fetch(`/generate_upload_url?filename=${encodeURIComponent(file.name)}`);
+                if (!urlResponse.ok) {
+                    let errMsg = "Failed to generate secure upload link.";
+                    try {
+                        const errData = await urlResponse.json();
+                        if (errData.error) errMsg = errData.error;
+                    } catch (e) {}
+                    throw new Error(errMsg);
+                }
+                
+                const { signed_url, path } = await urlResponse.json();
+                progressBar.style.width = '30%';
+                statusText.textContent = "Uploading securely to Supabase...";
+                
+                // 2. Upload the file to Supabase via PUT request
+                const uploadResponse = await fetch(signed_url, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    },
+                    body: file
+                });
+                
+                if (!uploadResponse.ok) {
+                    throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+                }
+                
+                progressBar.style.width = '100%';
+                statusText.textContent = "Upload complete! Processing data...";
+                statusText.style.color = "var(--success-color)";
+                
+                // 3. Clear file input to avoid hitting Vercel limit and submit the path
+                document.getElementById('excel_supabase_path').value = path;
+                input.value = ""; // Clear
+                
+                // Submit form to backend
+                setTimeout(() => form.submit(), 500);
+                
+            } catch (err) {
+                console.error("Upload error:", err);
+                statusText.textContent = `Error: ${err.message}`;
+                statusText.style.color = "var(--error-color)";
+                progressBar.style.backgroundColor = "var(--error-color)";
+                input.disabled = false;
+            }
+        } else {
+            // Normal file, small enough for Vercel, just submit the form normally
+            form.submit();
+        }
+    }
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<!-- OPG Lightbox Modal -->
+<div id="opg-modal" onclick="closeOPG()" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.82); z-index:9999; align-items:center; justify-content:center;">
+    <div onclick="event.stopPropagation()" style="position:relative; max-width:90vw; max-height:90vh; background:#111; border-radius:8px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.8);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:#1a1a1a; border-bottom:1px solid #333;">
+            <span id="opg-modal-title" style="font-size:13px; font-family:monospace; color:#ccc;"></span>
+            <button onclick="closeOPG()" style="background:none; border:none; color:#aaa; font-size:20px; cursor:pointer; line-height:1;">&#x2715;</button>
+        </div>
+        <img id="opg-modal-img" src="" alt="OPG" style="display:block; max-width:90vw; max-height:80vh; object-fit:contain;">
+    </div>
+</div>
+
+<script>
+if (typeof showOPG !== 'function') {
+    window.showOPG = function(url, id) {
+        document.getElementById('opg-modal-img').src = url;
+        document.getElementById('opg-modal-title').textContent = 'OPG — PATIENT: ' + id;
+        const modal = document.getElementById('opg-modal');
+        modal.style.display = 'flex';
+    };
+    window.closeOPG = function() {
+        document.getElementById('opg-modal').style.display = 'none';
+        document.getElementById('opg-modal-img').src = '';
+    };
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeOPG();
+    });
+}
+</script>
+{% endblock %}

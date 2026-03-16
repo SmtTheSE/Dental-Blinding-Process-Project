@@ -1,0 +1,154 @@
+<!-- Forms Section -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 60px; margin-bottom: 60px;">
+    <!-- Add Patient -->
+    <div>
+        <h2>Add Patient</h2>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="form-group">
+                <label>Patient ID</label>
+                <input type="text" name="patient_id" required placeholder="P-001">
+            </div>
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" name="name" placeholder="Optional">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="form-group">
+                    <label>Age</label>
+                    <input type="number" step="0.1" name="actual_age" required placeholder="0.0">
+                </div>
+                <div class="form-group">
+                    <label>Sex</label>
+                    <select name="sex">
+                        <option value="male">MALE</option>
+                        <option value="female">FEMALE</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">+ Add Record</button>
+        </form>
+    </div>
+
+    <!-- Import -->
+    <div>
+        <h2>Import Data</h2>
+        <p style="margin-bottom: 20px; font-size: 13px;">Upload CSV/Excel (Format: ID, Name, Age, Sex)</p>
+
+        <form method="POST" enctype="multipart/form-data" class="card">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="form-group">
+                <input type="file" name="csv_file" accept=".csv,.xlsx,.xls" onchange="this.form.submit()">
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Patients List -->
+<div>
+    <h2>Database Records</h2>
+
+    {% if patients.items %}
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 40px; text-align: center;">
+                        <input type="checkbox" id="select-all-checkbox" onclick="toggleSelectAll(this)" style="cursor: pointer;">
+                    </th>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Age</th>
+                    <th>Sex</th>
+                    <th>OPG</th>
+                    <th>Blind A</th>
+                    <th>Blind B</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for patient in patients.items %}
+                <tr>
+                    <td style="text-align: center;">
+                        <input type="checkbox" name="patient_ids" value="{{ patient.id }}" class="patient-checkbox" onclick="handleCheckboxClick(event, this)" style="cursor: pointer;">
+                    </td>
+                    <td style="font-weight: 700;">{{ patient.patient_id }}</td>
+                    <td>{{ patient.name or '—' }}</td>
+                    <td>{{ patient.actual_age }}</td>
+                    <td style="text-transform: uppercase;">{{ patient.sex }}</td>
+                    <td>
+                        {% if patient.opg_link %}
+                        <span style="color: var(--success-color);">[YES]</span>
+                        <a href="#" onclick="showOPG('{{ patient.opg_link }}', '{{ patient.name or patient.patient_id }}'); return false;"
+                           style="margin-left: 6px; font-size: 11px; color: var(--accent-color);">[VIEW]</a>
+                        {% else %}
+                        <span style="color: var(--error-color);">[NO]</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-family: monospace;">{{ patient.code_a or '—' }}</td>
+                    <td style="font-family: monospace;">{{ patient.code_b or '—' }}</td>
+                    <td style="text-align: right;">
+                        <a href="/upload_opg/{{ patient.id }}" style="margin-right: 10px;">[UPLOAD]</a>
+                        <a href="/patients/update/{{ patient.id }}" style="margin-right: 10px;">[EDIT]</a>
+                        <form method="POST" action="/patients/delete/{{ patient.id }}" style="display: inline;"
+                            onsubmit="return confirm('Confirm delete?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <button type="submit"
+                                style="background: none; border: none; color: var(--error-color); cursor: pointer; font-family: inherit; font-size: inherit; padding: 0;">[DEL]</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if patients.pages > 1 %}
+    <div
+        style="display: flex; justify-content: center; gap: 20px; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+        {% if patients.has_prev %}
+        <a href="{{ url_for('main.manage_patients', page=patients.prev_num, search=search_query) }}">&larr; Previous</a>
+        {% endif %}
+
+        <span>Page {{ patients.page }} / {{ patients.pages }}</span>
+
+        {% if patients.has_next %}
+        <a href="{{ url_for('main.manage_patients', page=patients.next_num, search=search_query) }}">Next &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div style="padding: 40px; text-align: center; border: 1px dashed var(--border-color);">
+        <p>NO RECORDS FOUND.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- OPG Lightbox Modal -->
+<div id="opg-modal" onclick="closeOPG()" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.82); z-index:9999; align-items:center; justify-content:center;">
+    <div onclick="event.stopPropagation()" style="position:relative; max-width:90vw; max-height:90vh; background:#111; border-radius:8px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.8);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:#1a1a1a; border-bottom:1px solid #333;">
+            <span id="opg-modal-title" style="font-size:13px; font-family:monospace; color:#ccc;"></span>
+            <button onclick="closeOPG()" style="background:none; border:none; color:#aaa; font-size:20px; cursor:pointer; line-height:1;">&#x2715;</button>
+        </div>
+        <img id="opg-modal-img" src="" alt="OPG" style="display:block; max-width:90vw; max-height:80vh; object-fit:contain;">
+    </div>
+</div>
+
+<script>
+function showOPG(url, name) {
+    document.getElementById('opg-modal-img').src = url;
+    document.getElementById('opg-modal-title').textContent = 'OPG — ' + name;
+    const modal = document.getElementById('opg-modal');
+    modal.style.display = 'flex';
+}
+function closeOPG() {
+    document.getElementById('opg-modal').style.display = 'none';
+    document.getElementById('opg-modal-img').src = '';
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeOPG();
+});
+</script>

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}PI Dashboard - Dental Age Estimation System{% endblock %}
+
+{% block content %}
+<div class="page-header" style="border-bottom: 2px solid var(--text-color); padding-bottom: 20px; margin-bottom: 40px;">
+    <h1>PI Dashboard</h1>
+    <p>PRINCIPAL INVESTIGATOR ACCESS</p>
+</div>
+
+<!-- Main Actions Grid -->
+<div
+    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 40px; margin-bottom: 60px;">
+    <div class="card">
+        <h3>Manaual Estimation</h3>
+        <p style="margin-bottom: 20px; font-size: 13px;">Perform manual age assessments using standard dental
+            development methodologies.</p>
+        <a href="/estimate_age" class="btn">START ESTIMATION &rarr;</a>
+    </div>
+
+    <div class="card">
+        <h3>Blinded Queue</h3>
+        <p style="margin-bottom: 20px; font-size: 13px;">View available blinded cases queued for your assessment.</p>
+        <a href="/estimate_age" class="btn">VIEW QUEUE &rarr;</a>
+    </div>
+</div>
+
+<!-- Methods Section -->
+<div style="margin-bottom: 60px;">
+    <h2 style="margin-bottom: 40px;">Methodologies</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 60px;">
+        <div>
+            <h4 style="font-weight: 700; margin-bottom: 10px; text-transform: uppercase;">AlQahtani Method</h4>
+            <p style="font-size: 13px;">
+                Atlas-based approach using dental development stages for both primary and permanent dentition. Covers
+                ages 0-23 years.
+            </p>
+        </div>
+        <div>
+            <h4 style="font-weight: 700; margin-bottom: 10px; text-transform: uppercase;">Demirjian Method</h4>
+            <p style="font-size: 13px;">
+                Scoring system based on 7 mandibular permanent teeth. Uses an 8-stage maturity scale (A-H) with weighted
+                scoring.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Protocol Footer -->
+<div style="border-top: 1px solid var(--border-color); padding-top: 40px;">
+    <h2 style="margin-bottom: 40px;">Assessment Protocol</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 40px;">
+        <div>
+            <span style="display: block; font-weight: 700; margin-bottom: 5px;">01 // REVIEW</span>
+            <p style="font-size: 12px;">Examine the orthopantomogram for dental development.</p>
+        </div>
+        <div>
+            <span style="display: block; font-weight: 700; margin-bottom: 5px;">02 // ASSESS</span>
+            <p style="font-size: 12px;">Determine development stage for each tooth.</p>
+        </div>
+        <div>
+            <span style="display: block; font-weight: 700; margin-bottom: 5px;">03 // CALCULATE</span>
+            <p style="font-size: 12px;">Apply methodology to estimate chronological age.</p>
+        </div>
+        <div>
+            <span style="display: block; font-weight: 700; margin-bottom: 5px;">04 // SUBMIT</span>
+            <p style="font-size: 12px;">Record final age estimation for blinded case.</p>
+        </div>
+    </div>
+</div>
+
+<div style="margin-top: 60px; padding: 20px; border: 1px solid var(--border-color); background: #fff;">
+    <p style="margin: 0; font-size: 12px; text-transform: uppercase;">
+        <strong>NOTE:</strong> You will not have access to patient identities or actual ages during the estimation
+        process.
+    </p>
+</div>
+{% endblock %}

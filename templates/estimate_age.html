@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Estimate Age - Dental Age Estimation System{% endblock %}
+
+{% block content %}
+<div class="page-header"
+    style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; border-bottom: 2px solid var(--text-color); padding-bottom: 20px;">
+    <div>
+        <h1 style="margin: 0;">Estimation Queue</h1>
+        <p style="margin: 0; font-size: 14px;">Review blinded data & submit assessments</p>
+    </div>
+
+    <!-- Search Inline -->
+    <form method="GET" action="/estimate_age" style="display: flex; align-items: center; gap: 10px;">
+        <input type="text" name="search" placeholder="SEARCH CODE..." value="{{ search_query or '' }}"
+            style="width: 250px; text-transform: uppercase;">
+        {% if search_query %}
+        <a href="/estimate_age" class="btn" style="padding: 10px;">X</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- List Section -->
+<div id="entries-container" class="fade-in">
+    {% include 'estimate_age_content.html' %}
+</div>
+
+<div style="margin-top: 60px; text-align: center;">
+    <a href="/" class="btn">&larr; Dashboard</a>
+</div>
+{% endblock %}

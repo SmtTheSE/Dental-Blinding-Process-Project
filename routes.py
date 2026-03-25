@@ -1052,11 +1052,11 @@ def estimate_age():
     # Shuffle the data
     random.shuffle(blinded_entries)
     
-    # Get completed assessments for the PI to see results (most recent 10)
+    # Get completed assessments for the PI to see results (all completed)
     completed_patients = Patient.query.filter(
         Patient.alqahtani_estimated_age.isnot(None),
         Patient.demirjian_estimated_age.isnot(None)
-    ).order_by(Patient.created_at.desc()).limit(10).all()
+    ).order_by(Patient.created_at.desc()).all()
 
     # Pre-calculate differences for completed patients
     for p in completed_patients:

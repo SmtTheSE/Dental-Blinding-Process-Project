@@ -997,10 +997,14 @@ def estimate_age():
     per_page = 20  # Show 20 entries per page
     
     # Show blinded data for the PI to work with
-    # Get all patients that have codes assigned but not yet estimated
+    # Get all patients that have codes assigned but not yet fully estimated
     patients_query = Patient.query.filter(
         Patient.code_a.isnot(None), 
-        Patient.code_b.isnot(None)
+        Patient.code_b.isnot(None),
+        db.or_(
+            Patient.alqahtani_estimated_age.is_(None),
+            Patient.demirjian_estimated_age.is_(None)
+        )
     )
     
     if search_query:

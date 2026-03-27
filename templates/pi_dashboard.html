@@ -8,6 +8,20 @@
     <p>PRINCIPAL INVESTIGATOR ACCESS</p>
 </div>
 
+<!-- Stats Section -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 40px; margin-bottom: 60px;">
+    <div style="padding: 30px; border: 1px solid var(--border-color); background: #fdfdfd; border-radius: 4px; box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
+        <span style="display: block; font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px;">TOTAL DATA ROWS</span>
+        <h2 style="font-size: 36px; font-weight: 300; margin: 0; color: var(--text-color);">{{ data_rows_count }}</h2>
+        <p style="font-size: 12px; margin-top: 10px; color: #666;">Available for blinded assessment</p>
+    </div>
+    <div style="padding: 30px; border: 1px solid var(--border-color); background: #fdfdfd; border-radius: 4px; box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
+        <span style="display: block; font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px;">TOTAL ESTIMATIONS</span>
+        <h2 style="font-size: 36px; font-weight: 300; margin: 0; color: var(--text-color);">{{ estimation_count }}</h2>
+        <p style="font-size: 12px; margin-top: 10px; color: #666;">Completed across all methodologies</p>
+    </div>
+</div>
+
 <!-- Main Actions Grid -->
 <div
     style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 40px; margin-bottom: 60px;">

@@ -132,7 +132,12 @@ def dashboard():
     if session['role'] == 'supervisor':
         return render_template('supervisor_dashboard.html')
     else:
-        return render_template('pi_dashboard.html')
+        # Calculate counts for PI dashboard
+        data_rows_count = Patient.query.count()
+        estimation_count = EstimationEntry.query.count()
+        return render_template('pi_dashboard.html', 
+                             data_rows_count=data_rows_count, 
+                             estimation_count=estimation_count)
 
 def renumber_patient_ids():
     """Renumber patient IDs sequentially starting from 1"""

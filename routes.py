@@ -1073,6 +1073,26 @@ def estimate_age():
     # Remove the artificial limit that was causing issues
     # The pagination will handle the appropriate number of entries to display
     
+    # Calculate totals for counts
+    total_pending_patients = Patient.query.filter(
+        Patient.code_a.isnot(None), 
+        Patient.code_b.isnot(None),
+        db.or_(
+            Patient.alqahtani_estimated_age.is_(None),
+            Patient.demirjian_estimated_age.is_(None)
+        )
+    ).all()
+    
+    total_queue_count = 0
+    for p in total_pending_patients:
+        if p.alqahtani_estimated_age is None: total_queue_count += 1
+        if p.demirjian_estimated_age is None: total_queue_count += 1
+
+    total_completed_count = Patient.query.filter(
+        Patient.alqahtani_estimated_age.isnot(None), 
+        Patient.demirjian_estimated_age.isnot(None)
+    ).count()
+    
     # Check if it's an AJAX request
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         # Return only the content part for AJAX requests
@@ -1080,13 +1100,17 @@ def estimate_age():
                              entries=blinded_entries, 
                              completed_patients=completed_patients,
                              search_query=search_query, 
-                             patients=patients)
+                             patients=patients,
+                             total_queue_count=total_queue_count,
+                             total_completed_count=total_completed_count)
     
     return render_template('estimate_age.html', 
                          entries=blinded_entries, 
                          completed_patients=completed_patients,
                          search_query=search_query, 
-                         patients=patients)
+                         patients=patients,
+                         total_queue_count=total_queue_count,
+                         total_completed_count=total_completed_count)
 
 @main.route('/perform_estimation')
 @role_required('pi')

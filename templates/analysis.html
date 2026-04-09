@@ -56,7 +56,8 @@
                     <th>OPG</th>
                     <th>AlQahtani Est.</th>
                     <th>Demirjian Est.</th>
-                    <th>Difference</th>
+                    <th>Diff (Alq)</th>
+                    <th>Diff (Dem)</th>
                 </tr>
             </thead>
             <tbody>
@@ -79,8 +80,22 @@
                     <td>{{ result.alqahtani_estimated_age or '—' }}</td>
                     <td>{{ result.demirjian_estimated_age or '—' }}</td>
                     <td>
-                        <!-- Calculate difference if possible or just show nothing for now -->
-                        —
+                        {% if result.alq_diff is not none %}
+                            <span style="color: {{ 'var(--error-color)' if result.alq_diff > 0 else 'var(--accent-color)' }}; font-weight: 600;">
+                                {{ "+" if result.alq_diff > 0 }}{{ result.alq_diff }}
+                            </span>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if result.dem_diff is not none %}
+                            <span style="color: {{ 'var(--error-color)' if result.dem_diff > 0 else 'var(--accent-color)' }}; font-weight: 600;">
+                                {{ "+" if result.dem_diff > 0 }}{{ result.dem_diff }}
+                            </span>
+                        {% else %}
+                            —
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

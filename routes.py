@@ -1334,6 +1334,20 @@ def analysis():
     # Prepare results for the template
     results = patients.items
     
+    # Calculate differences for each patient
+    for p in results:
+        # AlQahtani Diff
+        if p.alqahtani_estimated_age is not None:
+            p.alq_diff = round(p.alqahtani_estimated_age - p.actual_age, 2)
+        else:
+            p.alq_diff = None
+            
+        # Demirjian Diff
+        if p.demirjian_estimated_age is not None:
+            p.dem_diff = round(p.demirjian_estimated_age - p.actual_age, 2)
+        else:
+            p.dem_diff = None
+    
     # Generate or retrieve cached chart data
     chart_data = generate_chart_data()
     
@@ -1403,7 +1417,7 @@ def export_patients():
     ws.title = "Patient Data"
     
     # Write header
-    headers = ['ID', 'Name', 'Age', 'Sex', 'OPG Image', 'A code', 'D code', 'A Age', 'D Age', 'Actual age']
+    headers = ['ID', 'Name', 'Age', 'Sex', 'OPG Image', 'A code', 'D code', 'A Age', 'D Age', 'A Diff', 'D Diff']
     ws.append(headers)
     
     # Set column widths
@@ -1518,7 +1532,17 @@ def export_patients():
             ws.cell(row=row_idx, column=7, value=patient.code_b)
             ws.cell(row=row_idx, column=8, value=patient.alqahtani_estimated_age)
             ws.cell(row=row_idx, column=9, value=patient.demirjian_estimated_age)
-            ws.cell(row=row_idx, column=10, value=patient.actual_age)
+            
+            # Add difference columns
+            alq_diff = None
+            if patient.alqahtani_estimated_age is not None:
+                alq_diff = round(patient.alqahtani_estimated_age - patient.actual_age, 2)
+            ws.cell(row=row_idx, column=10, value=alq_diff)
+            
+            dem_diff = None
+            if patient.demirjian_estimated_age is not None:
+                dem_diff = round(patient.demirjian_estimated_age - patient.actual_age, 2)
+            ws.cell(row=row_idx, column=11, value=dem_diff)
             
             # Handle image embedding
             if patient.opg_link:

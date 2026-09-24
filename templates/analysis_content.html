@@ -1,12 +1,12 @@
 <!-- Charts Section -->
 {% if accuracy_chart or comparison_chart %}
-<div
+<div class="chart-grid"
     style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 40px; margin-bottom: 60px;">
     {% if accuracy_chart %}
     <div class="card">
         <h3>Accuracy Distribution</h3>
         <img src="data:image/png;base64,{{ accuracy_chart }}" alt="Accuracy Chart"
-            style="width: 100%; height: auto; filter: grayscale(100%);">
+            style="width: 100%; height: auto;">
     </div>
     {% endif %}
 
@@ -14,7 +14,7 @@
     <div class="card">
         <h3>Method Comparison</h3>
         <img src="data:image/png;base64,{{ comparison_chart }}" alt="Comparison Chart"
-            style="width: 100%; height: auto; filter: grayscale(100%);">
+            style="width: 100%; height: auto;">
     </div>
     {% endif %}
 </div>
@@ -50,9 +50,9 @@
                     <td>
                         {% if result.opg_link %}
                         <a href="#" onclick="showOPG('{{ result.opg_link }}', '{{ result.patient_id }}'); return false;"
-                           style="color: var(--accent-color);">[VIEW]</a>
+                           style="color: var(--accent-color);">View</a>
                         {% else %}
-                        <span style="color: var(--error-color); font-size: 11px;">[NO OPG]</span>
+                        <span style="color: var(--error-color); font-size: 11px;">No OPG</span>
                         {% endif %}
                     </td>
                     <td>{{ result.alqahtani_estimated_age or '—' }}</td>
@@ -86,20 +86,20 @@
     <div
         style="display: flex; justify-content: center; gap: 20px; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color);">
         {% if patients.has_prev %}
-        <a href="{{ url_for('main.analysis', page=patients.prev_num, search=search_query) }}">&larr; Previous</a>
+        <a href="{{ url_for('main.analysis', page=patients.prev_num, search=search_query) }}">Previous</a>
         {% endif %}
 
         <span>Page {{ patients.page }} / {{ patients.pages }}</span>
 
         {% if patients.has_next %}
-        <a href="{{ url_for('main.analysis', page=patients.next_num, search=search_query) }}">Next &rarr;</a>
+        <a href="{{ url_for('main.analysis', page=patients.next_num, search=search_query) }}">Next</a>
         {% endif %}
     </div>
     {% endif %}
 
     {% else %}
     <div style="padding: 40px; text-align: center; border: 1px dashed var(--border-color);">
-        <p>NO ANALYSIS DATA AVAILABLE.</p>
+        <p>No analysis data available yet.</p>
     </div>
     {% endif %}
 </div>

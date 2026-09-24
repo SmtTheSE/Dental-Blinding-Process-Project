@@ -1,31 +1,27 @@
 {% extends "base.html" %}
 
-{% block title %}Estimate Age - Dental Age Estimation System{% endblock %}
+{% block title %}Estimation queue — UDMM Research Workspace{% endblock %}
 
 {% block content %}
-<div class="page-header"
-    style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; border-bottom: 2px solid var(--text-color); padding-bottom: 20px;">
+<div class="page-header">
     <div>
-        <h1 style="margin: 0;">Estimation Queue ({{ total_queue_count }})</h1>
-        <p style="margin: 0; font-size: 14px;">Review blinded data & submit assessments</p>
+        <h1>Estimation queue</h1>
+        <p><strong class="age-value">{{ total_queue_count }}</strong> cases waiting. Open a case to review its OPG and record an estimate.</p>
     </div>
 
     <!-- Search Inline -->
-    <form method="GET" action="/estimate_age" style="display: flex; align-items: center; gap: 10px;">
-        <input type="text" name="search" placeholder="SEARCH CODE..." value="{{ search_query or '' }}"
-            style="width: 250px; text-transform: uppercase;">
+    <form method="GET" action="/estimate_age" role="search">
+        <label for="estimate-search" class="sr-only">Search blind code</label>
+        <input id="estimate-search" type="search" name="search" placeholder="Search blind code" value="{{ search_query or '' }}">
+        <button type="submit" class="btn">Search</button>
         {% if search_query %}
-        <a href="/estimate_age" class="btn" style="padding: 10px;">X</a>
+        <a href="/estimate_age" class="btn">Clear</a>
         {% endif %}
     </form>
 </div>
 
 <!-- List Section -->
-<div id="entries-container" class="fade-in">
+<div id="entries-container">
     {% include 'estimate_age_content.html' %}
-</div>
-
-<div style="margin-top: 60px; text-align: center;">
-    <a href="/" class="btn">&larr; Dashboard</a>
 </div>
 {% endblock %}

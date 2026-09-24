@@ -1,60 +1,24 @@
 {% extends "base.html" %}
-
-{% block title %}Supervisor Dashboard - Dental Age Estimation System{% endblock %}
-
+{% block title %}Overview — UDMM Research Workspace{% endblock %}
 {% block content %}
-<div class="page-header" style="border-bottom: 2px solid var(--text-color); padding-bottom: 20px; margin-bottom: 40px;">
-    <h1>Supervisor Dashboard</h1>
-    <p>OVERVIEW & STATISTICS</p>
-</div>
-
-<div
-    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 40px; margin-bottom: 60px;">
-    <div class="card">
-        <h3>Total Patients</h3>
-        <div style="font-size: 48px; font-weight: 700; margin-top: 10px;">{{ total_patients }}</div>
+<section class="dashboard-home">
+    <p class="dashboard-kicker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 7A1.5 1.5 0 0 1 5 5.5h4.3l2.2 2.2H19a1.5 1.5 0 0 1 1.5 1.5v8.3A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z"/></svg>UDMM Research Workspace</p>
+    <h1>Welcome back, {{ current_user.username|replace('_', ' ')|title }}</h1>
+    <p class="dashboard-subtitle">What would you like to work on today?</p>
+    <div class="workspace-prompt">
+        <p class="prompt-title">Your research workspace</p>
+        <div class="prompt-links">
+            <a href="{{ url_for('main.manage_patients') }}"><span class="prompt-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 12a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM3 19.5c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><path d="M16 5.5a3.5 3.5 0 0 1 0 6.5M18 14.8c1.6.7 2.7 2.4 3 4.7"/></svg></span><span class="prompt-text"><span class="prompt-label">Manage patient records</span><small>Add records, attach OPGs, and assign codes</small></span><svg class="prompt-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+            <a href="{{ url_for('main.blinded_data') }}"><span class="prompt-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c5 0 8.5 4.5 9.5 7a13 13 0 0 1-2.4 3.4M6.6 6.6C4.4 8 3 10.2 2.5 12c1 2.5 4.5 7 9.5 7 1.9 0 3.6-.6 5-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></span><span class="prompt-text"><span class="prompt-label">Review blinded data</span><small>See coded records and image availability</small></span><svg class="prompt-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+            <a href="{{ url_for('main.analysis') }}"><span class="prompt-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><span class="prompt-text"><span class="prompt-label">Explore analysis</span><small>Compare age estimates and export results</small></span><svg class="prompt-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+        <div class="prompt-footer"><span>University of Dental Medicine, Mandalay</span><a href="{{ url_for('main.manage_patients') }}" class="btn btn-ink">Open patients</a></div>
     </div>
-    <div class="card">
-        <h3>Pending Estimations</h3>
-        <div style="font-size: 48px; font-weight: 700; margin-top: 10px;">{{ pending_estimations }}</div>
-    </div>
-    <div class="card">
-        <h3>Completed Analysis</h3>
-        <div style="font-size: 48px; font-weight: 700; margin-top: 10px;">{{ completed_analysis }}</div>
-    </div>
-</div>
-
-<div style="margin-bottom: 60px;">
-    <h2>Recent Activity</h2>
-    {% if recent_activities %}
-    <table>
-        <thead>
-            <tr>
-                <th>Time</th>
-                <th>User</th>
-                <th>Action</th>
-                <th>Details</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for activity in recent_activities %}
-            <tr>
-                <td style="font-family: monospace;">{{ activity.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
-                <td>{{ activity.user.username }}</td>
-                <td style="text-transform: uppercase;">{{ activity.action }}</td>
-                <td>{{ activity.details }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p style="text-align: center; color: var(--apple-gray); padding: 40px; border: 1px dashed var(--border-color);">NO
-        RECENT ACTIVITY.</p>
+    {% if total_patients is defined and pending_estimations is defined and completed_analysis is defined %}
+    <div class="dashboard-metrics"><span><strong>{{ total_patients }}</strong> patients</span><span><strong>{{ pending_estimations }}</strong> pending estimations</span><span><strong>{{ completed_analysis }}</strong> completed analyses</span></div>
     {% endif %}
-</div>
-
-<div style="display: flex; gap: 20px; justify-content: center;">
-    <a href="{{ url_for('main.manage_patients') }}" class="btn">Manage Patients</a>
-    <a href="{{ url_for('main.analysis') }}" class="btn">View Analysis</a>
-</div>
+</section>
+{% if recent_activities is defined and recent_activities %}
+<section class="dashboard-secondary"><div class="section-heading"><h2>Recent activity</h2><p>Changes made across the workspace.</p></div><div class="table-wrap"><table><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead><tbody>{% for activity in recent_activities %}<tr><td>{{ activity.timestamp.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ activity.user.username }}</td><td>{{ activity.action }}</td><td>{{ activity.details }}</td></tr>{% endfor %}</tbody></table></div></section>
+{% endif %}
 {% endblock %}

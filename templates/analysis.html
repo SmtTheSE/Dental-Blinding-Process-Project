@@ -1,42 +1,39 @@
 {% extends "base.html" %}
 
-{% block title %}Analysis Results - Dental Age Estimation System{% endblock %}
+{% block title %}Analysis — UDMM Research Workspace{% endblock %}
 
 {% block content %}
-<div class="page-header"
-    style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; border-bottom: 2px solid var(--text-color); padding-bottom: 20px;">
+<div class="page-header">
     <div>
-        <h1 style="margin: 0;">Analysis</h1>
-        <p style="margin: 0; font-size: 14px;">Comparative Results & Statistics</p>
+        <h1>Analysis</h1>
+        <p>Compare estimated and actual ages across methods.</p>
     </div>
 
     <!-- Search Inline -->
-    <form method="GET" action="/analysis" style="display: flex; align-items: center; gap: 10px;">
-        <input type="text" name="search" placeholder="SEARCH PATIENT..." value="{{ search_query or '' }}"
-            style="width: 250px; text-transform: uppercase;">
+    <form method="GET" action="/analysis" role="search">
+        <label for="analysis-search" class="sr-only">Search patient</label>
+        <input id="analysis-search" type="search" name="search" placeholder="Search patient" value="{{ search_query or '' }}">
+        <button type="submit" class="btn">Search</button>
         {% if search_query %}
-        <a href="/analysis" class="btn" style="padding: 10px;">X</a>
+        <a href="/analysis" class="btn">Clear</a>
         {% endif %}
     </form>
 </div>
 
 <!-- Charts Section -->
 {% if accuracy_chart or comparison_chart %}
-<div
-    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 40px; margin-bottom: 60px;">
+<div class="chart-grid">
     {% if accuracy_chart %}
     <div class="card">
-        <h3>Accuracy Distribution</h3>
-        <img src="data:image/png;base64,{{ accuracy_chart }}" alt="Accuracy Chart"
-            style="width: 100%; height: auto; filter: grayscale(100%);">
+        <h3>Accuracy distribution</h3>
+        <img src="data:image/png;base64,{{ accuracy_chart }}" alt="Accuracy distribution chart">
     </div>
     {% endif %}
 
     {% if comparison_chart %}
     <div class="card">
-        <h3>Method Comparison</h3>
-        <img src="data:image/png;base64,{{ comparison_chart }}" alt="Comparison Chart"
-            style="width: 100%; height: auto; filter: grayscale(100%);">
+        <h3>Method comparison</h3>
+        <img src="data:image/png;base64,{{ comparison_chart }}" alt="Method comparison chart">
     </div>
     {% endif %}
 </div>
@@ -44,9 +41,9 @@
 
 <!-- Data Table -->
 <div>
-    <h2>Detailed Records (Total: {{ patients.total }})</h2>
+    <div class="section-heading"><div><h2>Detailed records</h2><p>{{ patients.total }} records. Differences are estimate minus actual age, in years.</p></div><a href="{{ url_for('main.export_patients') }}" class="btn" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Export Excel</a></div>
     {% if results %}
-    <div id="analysis-table-container" style="overflow-x: auto;">
+    <div id="analysis-table-container">
         <table>
             <thead>
                 <tr>
@@ -64,37 +61,32 @@
                 {% for result in results %}
                 <tr>
                     <td>
-                        <div style="font-weight: 700;">{{ result.patient_id }}</div>
-                        <div style="font-size: 12px; color: #666;">{{ result.name or '' }}</div>
+                        <span class="cell-strong">{{ result.patient_id }}</span>
+                        {% if result.name %}<span class="cell-sub">{{ result.name }}</span>{% endif %}
                     </td>
                     <td>{{ result.actual_age }}</td>
-                    <td style="text-transform: uppercase;">{{ result.sex }}</td>
+                    <td class="upper">{{ result.sex }}</td>
                     <td>
                         {% if result.opg_link %}
-                        <a href="#" onclick="showOPG('{{ result.opg_link }}', '{{ result.patient_id }}'); return false;"
-                           style="color: var(--accent-color);">[VIEW]</a>
+                        <a href="#" onclick="showOPG('{{ result.opg_link }}', 'Patient {{ result.patient_id }}'); return false;">View</a>
                         {% else %}
-                        <span style="color: var(--error-color); font-size: 11px;">[NO OPG]</span>
+                        <span class="status-text missing">No OPG</span>
                         {% endif %}
                     </td>
-                    <td>{{ result.alqahtani_estimated_age or '—' }}</td>
-                    <td>{{ result.demirjian_estimated_age or '—' }}</td>
+                    <td>{% if result.alqahtani_estimated_age %}{{ result.alqahtani_estimated_age }}{% else %}<span class="dash">—</span>{% endif %}</td>
+                    <td>{% if result.demirjian_estimated_age %}{{ result.demirjian_estimated_age }}{% else %}<span class="dash">—</span>{% endif %}</td>
                     <td>
                         {% if result.alq_diff is not none %}
-                            <span style="color: {{ 'var(--error-color)' if result.alq_diff > 0 else 'var(--accent-color)' }}; font-weight: 600;">
-                                {{ "+" if result.alq_diff > 0 }}{{ result.alq_diff }}
-                            </span>
+                            <span class="diff {{ 'good' if result.alq_diff|abs <= 1 else ('warn' if result.alq_diff|abs <= 2 else 'bad') }}">{{ "+" if result.alq_diff > 0 }}{{ result.alq_diff }}</span>
                         {% else %}
-                            —
+                            <span class="dash">—</span>
                         {% endif %}
                     </td>
                     <td>
                         {% if result.dem_diff is not none %}
-                            <span style="color: {{ 'var(--error-color)' if result.dem_diff > 0 else 'var(--accent-color)' }}; font-weight: 600;">
-                                {{ "+" if result.dem_diff > 0 }}{{ result.dem_diff }}
-                            </span>
+                            <span class="diff {{ 'good' if result.dem_diff|abs <= 1 else ('warn' if result.dem_diff|abs <= 2 else 'bad') }}">{{ "+" if result.dem_diff > 0 }}{{ result.dem_diff }}</span>
                         {% else %}
-                            —
+                            <span class="dash">—</span>
                         {% endif %}
                     </td>
                 </tr>
@@ -105,60 +97,23 @@
 
     <!-- Pagination -->
     {% if patients.pages > 1 %}
-    <div
-        style="display: flex; justify-content: center; gap: 20px; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color);">
-        {% if patients.has_prev %}
-        <a href="{{ url_for('main.analysis', page=patients.prev_num, search=search_query) }}">&larr; Previous</a>
-        {% endif %}
-
-        <span>Page {{ patients.page }} / {{ patients.pages }}</span>
-
-        {% if patients.has_next %}
-        <a href="{{ url_for('main.analysis', page=patients.next_num, search=search_query) }}">Next &rarr;</a>
-        {% endif %}
-    </div>
+    <nav class="pagination" aria-label="Pagination">
+        <span>Page {{ patients.page }} of {{ patients.pages }}</span>
+        <div class="pages">
+            <a class="btn btn-sm" {% if patients.has_prev %}href="{{ url_for('main.analysis', page=patients.prev_num, search=search_query) }}"{% else %}aria-disabled="true"{% endif %}>Previous</a>
+            <a class="btn btn-sm" {% if patients.has_next %}href="{{ url_for('main.analysis', page=patients.next_num, search=search_query) }}"{% else %}aria-disabled="true"{% endif %}>Next</a>
+        </div>
+    </nav>
     {% endif %}
 
     {% else %}
-    <div style="padding: 40px; text-align: center; border: 1px dashed var(--border-color);">
-        <p>NO ANALYSIS DATA AVAILABLE.</p>
+    <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18"/></svg>
+        <strong>No analysis data yet</strong>
+        <p>Results appear here once estimates have been submitted.</p>
     </div>
     {% endif %}
 </div>
 
-<!-- Footer Links -->
-<div style="margin-top: 60px; text-align: center;">
-    <a href="{{ url_for('main.export_patients') }}" class="btn" target="_blank">Download Excel Report</a>
-</div>
 {% endblock %}
 
-{% block extra_js %}
-<!-- OPG Lightbox Modal -->
-<div id="opg-modal" onclick="closeOPG()" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.82); z-index:9999; align-items:center; justify-content:center;">
-    <div onclick="event.stopPropagation()" style="position:relative; max-width:90vw; max-height:90vh; background:#111; border-radius:8px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.8);">
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:#1a1a1a; border-bottom:1px solid #333;">
-            <span id="opg-modal-title" style="font-size:13px; font-family:monospace; color:#ccc;"></span>
-            <button onclick="closeOPG()" style="background:none; border:none; color:#aaa; font-size:20px; cursor:pointer; line-height:1;">&#x2715;</button>
-        </div>
-        <img id="opg-modal-img" src="" alt="OPG" style="display:block; max-width:90vw; max-height:80vh; object-fit:contain;">
-    </div>
-</div>
-
-<script>
-if (typeof showOPG !== 'function') {
-    window.showOPG = function(url, id) {
-        document.getElementById('opg-modal-img').src = url;
-        document.getElementById('opg-modal-title').textContent = 'OPG — PATIENT: ' + id;
-        const modal = document.getElementById('opg-modal');
-        modal.style.display = 'flex';
-    };
-    window.closeOPG = function() {
-        document.getElementById('opg-modal').style.display = 'none';
-        document.getElementById('opg-modal-img').src = '';
-    };
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') closeOPG();
-    });
-}
-</script>
-{% endblock %}

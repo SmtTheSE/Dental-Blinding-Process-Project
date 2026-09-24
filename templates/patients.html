@@ -1,21 +1,21 @@
 {% extends "base.html" %}
 
-{% block title %}Manage Patients - Dental Age Estimation System{% endblock %}
+{% block title %}Patients — UDMM Research Workspace{% endblock %}
 
 {% block content %}
-<div class="page-header"
-    style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; border-bottom: 2px solid var(--text-color); padding-bottom: 20px;">
+<div class="page-header">
     <div>
-        <h1 style="margin: 0;">Patients</h1>
-        <p style="margin: 0; font-size: 14px;">Database Management</p>
+        <h1>Patients</h1>
+        <p>Manage patient details, radiographs, and blinding codes.</p>
     </div>
 
     <!-- Search -->
-    <form method="GET" action="/patients" style="display: flex; align-items: center; gap: 10px;">
-        <input type="text" name="search" placeholder="SEARCH ID/NAME..." value="{{ search_query or '' }}"
-            style="width: 250px; text-transform: uppercase;">
+    <form method="GET" action="/patients" role="search">
+        <label for="patient-search" class="sr-only">Search by ID or name</label>
+        <input id="patient-search" type="search" name="search" placeholder="Search ID or name" value="{{ search_query or '' }}">
+        <button type="submit" class="btn">Search</button>
         {% if search_query %}
-        <a href="/patients" class="btn" style="padding: 10px;">X</a>
+        <a href="/patients" class="btn">Clear</a>
         {% endif %}
     </form>
 </div>
@@ -23,79 +23,80 @@
 <!-- Forms Section -->
 <div class="patients-grid">
     <!-- Add Patient -->
-    <div>
-        <h2>Add Patient</h2>
+    <div id="add-patient">
+        <h2>Add a patient</h2>
+        <p>Create one record at a time.</p>
         <form method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-group">
-                <label>Patient ID</label>
-                <input type="text" name="patient_id" required placeholder="P-001">
+                <label for="new-patient-id">Patient ID</label>
+                <input id="new-patient-id" type="text" name="patient_id" required placeholder="e.g. P-001">
             </div>
             <div class="form-group">
-                <label>Full Name</label>
-                <input type="text" name="name" placeholder="Optional">
+                <label for="new-patient-name">Full name <span class="optional">Optional</span></label>
+                <input id="new-patient-name" type="text" name="name" placeholder="Patient name">
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="field-grid">
                 <div class="form-group">
-                    <label>Age</label>
-                    <input type="number" step="0.1" name="actual_age" required placeholder="0.0">
+                    <label for="new-patient-age">Actual age (years)</label>
+                    <input id="new-patient-age" type="number" step="0.1" name="actual_age" required placeholder="0.0">
                 </div>
                 <div class="form-group">
-                    <label>Sex</label>
-                    <select name="sex">
-                        <option value="male">MALE</option>
-                        <option value="female">FEMALE</option>
+                    <label for="new-patient-sex">Sex</label>
+                    <select id="new-patient-sex" name="sex">
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
                     </select>
                 </div>
             </div>
-            <button type="submit" class="btn btn-primary">+ Add Record</button>
+            <button type="submit" class="btn btn-primary">Add patient</button>
         </form>
     </div>
 
     <!-- Import -->
     <div>
-        <h2>Import Data</h2>
-        <p style="margin-bottom: 20px; font-size: 13px;">Upload CSV/Excel (Format: ID, Name, Age, Sex)</p>
+        <h2>Import records</h2>
+        <p>CSV or Excel with ID, name, age, and sex columns. The import starts as soon as you choose a file.</p>
 
         <form id="import-form" method="POST" enctype="multipart/form-data" class="card">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" id="excel_supabase_path" name="excel_supabase_path" value="">
             <div class="form-group">
+                <label for="csv_file" class="sr-only">Choose a CSV or Excel file</label>
                 <input type="file" id="csv_file" name="csv_file" accept=".csv,.xlsx,.xls" onchange="handleFileUpload(this)">
             </div>
             
-            <div id="upload-progress-container" style="display: none; margin-top: 15px;">
-                <p id="upload-status-text" style="font-size: 13px; color: var(--text-color); margin-bottom: 5px;">Uploading to secure storage...</p>
-                <div style="width: 100%; background-color: var(--border-color); border-radius: 4px; height: 8px; overflow: hidden;">
-                    <div id="upload-progress-bar" style="width: 0%; height: 100%; background-color: var(--primary-color); transition: width 0.3s; border-radius: 4px;"></div>
-                </div>
+            <div id="upload-progress-container" style="display: none;" aria-live="polite">
+                <p id="upload-status-text" class="progress-label">Uploading to secure storage…</p>
+                <div class="progress"><div id="upload-progress-bar" class="progress-bar"></div></div>
             </div>
         </form>
 
-        <div style="margin-top: 20px; display: flex; gap: 10px; align-items: center;">
-            <a href="/assign_codes" class="btn">Assign Blinding Codes &rarr;</a>
-            <button id="bulk-delete-btn" class="btn" style="color: var(--error-color); border-color: var(--error-color); opacity: 0.5; cursor: not-allowed;" disabled onclick="confirmBulkDelete()">Bulk Delete Selected [0]</button>
+        <div class="tool-actions">
+            <a href="/assign_codes" class="btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>Assign blinding codes</a>
+            <button id="bulk-delete-btn" class="btn danger-outline" disabled onclick="confirmBulkDelete()">Delete selected (0)</button>
         </div>
     </div>
 </div>
 
 <!-- Patients List -->
 <div>
-    <h2>Database Records (Total: {{ patients.total }})</h2>
+    <div class="section-heading"><h2>Patient records</h2><p>{{ patients.total }} total records. Select rows to manage them together.</p></div>
 
-    <div id="select-all-banner" style="display: none; background: var(--bg-color-alt, #f5f5f5); border: 1px solid var(--border-color); padding: 10px; margin-bottom: 20px; text-align: center; font-size: 14px;">
+    <div id="select-all-banner" class="select-banner">
         <span id="select-all-text">All {{ patients.items|length }} patients on this page are selected.</span>
-        <button type="button" id="select-all-db-btn" onclick="selectAllInDB(true)" style="background: none; border: none; color: var(--primary-color); cursor: pointer; font-weight: bold; text-decoration: underline; padding: 0 5px;">Select all {{ patients.total }} patients in database</button>
-        <button type="button" id="clear-selection-btn" onclick="selectAllInDB(false)" style="display: none; background: none; border: none; color: var(--primary-color); cursor: pointer; font-weight: bold; text-decoration: underline; padding: 0 5px;">Clear selection</button>
+        <button type="button" id="select-all-db-btn" onclick="selectAllInDB(true)">Select all {{ patients.total }} matching records</button>
+        <button type="button" id="clear-selection-btn" onclick="selectAllInDB(false)" style="display: none;">Clear selection</button>
     </div>
 
     {% if patients.items %}
-    <div id="patients-table-container" style="overflow-x: auto;">
+    <div id="patients-table-container">
         <table>
             <thead>
                 <tr>
-                    <th style="width: 40px; text-align: center;">
-                        <input type="checkbox" id="select-all-checkbox" onclick="toggleSelectAll(this)" style="cursor: pointer;">
+                    <th class="check">
+                        <input type="checkbox" id="select-all-checkbox" onclick="toggleSelectAll(this)" aria-label="Select all patients on this page">
                     </th>
                     <th>ID</th>
                     <th>Name</th>
@@ -104,36 +105,37 @@
                     <th>OPG</th>
                     <th>Blind A</th>
                     <th>Blind B</th>
-                    <th style="text-align: right;">Actions</th>
+                    <th class="align-right">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for patient in patients.items %}
                 <tr>
-                    <td style="text-align: center;">
-                        <input type="checkbox" name="patient_ids" value="{{ patient.id }}" class="patient-checkbox" onclick="handleCheckboxClick(event, this)" style="cursor: pointer;">
+                    <td class="check">
+                        <input type="checkbox" name="patient_ids" value="{{ patient.id }}" class="patient-checkbox" onclick="handleCheckboxClick(event, this)" aria-label="Select {{ patient.patient_id }}">
                     </td>
-                    <td style="font-weight: 700;">{{ patient.patient_id }}</td>
-                    <td>{{ patient.name or '—' }}</td>
+                    <td class="cell-strong">{{ patient.patient_id }}</td>
+                    <td>{% if patient.name %}{{ patient.name }}{% else %}<span class="dash">—</span>{% endif %}</td>
                     <td>{{ patient.actual_age }}</td>
-                    <td style="text-transform: uppercase;">{{ patient.sex }}</td>
+                    <td class="upper">{{ patient.sex }}</td>
                     <td>
                         {% if patient.opg_link %}
-                        <span style="color: var(--success-color);">[YES]</span>
-                        <a href="#" onclick="showOPG('{{ patient.opg_link }}', '{{ patient.patient_id }}'); return false;"
-                           style="margin-left: 6px; font-size: 11px; color: var(--accent-color);">[VIEW]</a>
+                        <span class="status-text success">Available</span>
+                        <a href="#" onclick="showOPG('{{ patient.opg_link }}', 'Patient {{ patient.patient_id }}'); return false;"
+                           style="margin-left: 8px;">View</a>
                         {% else %}
-                        <span style="color: var(--error-color);">[NO]</span>
+                        <span class="status-text missing">Missing</span>
                         {% endif %}
                     </td>
-                    <td style="font-family: monospace;">{{ patient.code_a or '—' }}</td>
-                    <td style="font-family: monospace;">{{ patient.code_b or '—' }}</td>
-                    <td style="text-align: right;">
-                        <a href="/upload_opg/{{ patient.id }}" style="margin-right: 10px;">[UPLOAD]</a>
-                        <a href="/patients/update/{{ patient.id }}" style="margin-right: 10px;">[EDIT]</a>
-                        <button type="button"
-                            onclick="confirmDelete('{{ url_for('main.delete_patient', patient_id=patient.id) }}')"
-                            style="background: none; border: none; color: var(--error-color); cursor: pointer; font-family: inherit; font-size: inherit; padding: 0;">[DEL]</button>
+                    <td class="mono">{% if patient.code_a %}{{ patient.code_a }}{% else %}<span class="dash">—</span>{% endif %}</td>
+                    <td class="mono">{% if patient.code_b %}{{ patient.code_b }}{% else %}<span class="dash">—</span>{% endif %}</td>
+                    <td class="align-right">
+                        <span class="row-actions">
+                            <a href="/upload_opg/{{ patient.id }}" class="link-action">Upload OPG</a>
+                            <a href="/patients/update/{{ patient.id }}" class="link-action">Edit</a>
+                            <button type="button" class="link-action danger"
+                                onclick="confirmDelete('{{ url_for('main.delete_patient', patient_id=patient.id) }}')">Delete</button>
+                        </span>
                     </td>
                 </tr>
                 {% endfor %}
@@ -143,23 +145,20 @@
 
     <!-- Pagination -->
     {% if patients.pages > 1 %}
-    <div
-        style="display: flex; justify-content: center; gap: 20px; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color);">
-        {% if patients.has_prev %}
-        <a href="{{ url_for('main.manage_patients', page=patients.prev_num, search=search_query) }}">&larr; Previous</a>
-        {% endif %}
-
-        <span>Page {{ patients.page }} / {{ patients.pages }}</span>
-
-        {% if patients.has_next %}
-        <a href="{{ url_for('main.manage_patients', page=patients.next_num, search=search_query) }}">Next &rarr;</a>
-        {% endif %}
-    </div>
+    <nav class="pagination" aria-label="Pagination">
+        <span>Page {{ patients.page }} of {{ patients.pages }}</span>
+        <div class="pages">
+            <a class="btn btn-sm" {% if patients.has_prev %}href="{{ url_for('main.manage_patients', page=patients.prev_num, search=search_query) }}"{% else %}aria-disabled="true"{% endif %}>Previous</a>
+            <a class="btn btn-sm" {% if patients.has_next %}href="{{ url_for('main.manage_patients', page=patients.next_num, search=search_query) }}"{% else %}aria-disabled="true"{% endif %}>Next</a>
+        </div>
+    </nav>
     {% endif %}
 
     {% else %}
-    <div style="padding: 40px; text-align: center; border: 1px dashed var(--border-color);">
-        <p>NO RECORDS FOUND.</p>
+    <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18"/></svg>
+        <strong>No patients found</strong>
+        <p>Add a patient above, or adjust your search.</p>
     </div>
     {% endif %}
 </div>
@@ -179,7 +178,8 @@
         // Show custom modal instead of native confirm
         const modal = document.getElementById('custom-modal');
         const msg = document.getElementById('modal-message');
-        msg.textContent = 'Are you sure you want to delete this patient? This action cannot be undone.';
+        msg.textContent = 'This patient record, its OPG image, and its estimations will be permanently deleted.';
+        document.getElementById('modal-title').textContent = 'Delete patient?';
 
         // Store the URL
         deleteUrlTarget = deleteUrl;
@@ -191,11 +191,13 @@
 
     function confirmBulkDelete() {
         const selectedCheckboxes = document.querySelectorAll('.patient-checkbox:checked');
-        if (selectedCheckboxes.length === 0) return;
+        if (selectedCheckboxes.length === 0 && !selectAllAcrossPages) return;
 
         const modal = document.getElementById('custom-modal');
         const msg = document.getElementById('modal-message');
-        msg.textContent = `Are you sure you want to delete ${selectedCheckboxes.length} selected patient(s)? This action cannot be undone and will delete all associated data.`;
+        const deleteCount = selectAllAcrossPages ? totalPatientsInDB : selectedCheckboxes.length;
+        msg.textContent = `${deleteCount} patient record(s), with their images and estimations, will be permanently deleted.`;
+        document.getElementById('modal-title').textContent = `Delete ${deleteCount} patient${deleteCount === 1 ? '' : 's'}?`;
 
         deleteUrlTarget = "{{ url_for('main.bulk_delete_patients') }}";
         isBulkDelete = true;
@@ -247,7 +249,7 @@
         const headerCheckbox = document.getElementById('select-all-checkbox');
         
         if (select) {
-            bannerText.textContent = `All ${totalPatientsInDB} patients in database are selected.`;
+            bannerText.textContent = `All ${totalPatientsInDB} matching records are selected.`;
             selectAllBtn.style.display = 'none';
             clearBtn.style.display = 'inline-block';
             headerCheckbox.checked = true;
@@ -272,14 +274,10 @@
 
         if (displayCount > 0) {
             btn.disabled = false;
-            btn.style.opacity = '1';
-            btn.style.cursor = 'pointer';
-            btn.textContent = `Bulk Delete Selected [${displayCount}]`;
+            btn.textContent = `Delete selected (${displayCount})`;
         } else {
             btn.disabled = true;
-            btn.style.opacity = '0.5';
-            btn.style.cursor = 'not-allowed';
-            btn.textContent = `Bulk Delete Selected [0]`;
+            btn.textContent = `Delete selected (0)`;
         }
 
         // Show/hide select-all banner
@@ -429,33 +427,3 @@
 </script>
 {% endblock %}
 
-{% block extra_js %}
-<!-- OPG Lightbox Modal -->
-<div id="opg-modal" onclick="closeOPG()" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.82); z-index:9999; align-items:center; justify-content:center;">
-    <div onclick="event.stopPropagation()" style="position:relative; max-width:90vw; max-height:90vh; background:#111; border-radius:8px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.8);">
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:#1a1a1a; border-bottom:1px solid #333;">
-            <span id="opg-modal-title" style="font-size:13px; font-family:monospace; color:#ccc;"></span>
-            <button onclick="closeOPG()" style="background:none; border:none; color:#aaa; font-size:20px; cursor:pointer; line-height:1;">&#x2715;</button>
-        </div>
-        <img id="opg-modal-img" src="" alt="OPG" style="display:block; max-width:90vw; max-height:80vh; object-fit:contain;">
-    </div>
-</div>
-
-<script>
-if (typeof showOPG !== 'function') {
-    window.showOPG = function(url, id) {
-        document.getElementById('opg-modal-img').src = url;
-        document.getElementById('opg-modal-title').textContent = 'OPG — PATIENT: ' + id;
-        const modal = document.getElementById('opg-modal');
-        modal.style.display = 'flex';
-    };
-    window.closeOPG = function() {
-        document.getElementById('opg-modal').style.display = 'none';
-        document.getElementById('opg-modal-img').src = '';
-    };
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') closeOPG();
-    });
-}
-</script>
-{% endblock %}

@@ -4,123 +4,171 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Dental Age Estimation System">
-    <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='img/UDMM.jpeg') }}">
-    <title>{% block title %}Dental Age Estimation System{% endblock %}</title>
+    <meta name="description" content="UDMM Research Workspace — University of Dental Medicine, Mandalay">
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico', v='2') }}" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png', v='2') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='img/favicon-16.png', v='2') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='img/icon-192.png', v='2') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png', v='2') }}">
+    <meta name="theme-color" content="#faf9f5">
+    <title>{% block title %}UDMM Research Workspace{% endblock %}</title>
 
-    <!-- Google Fonts: Inconsolata -->
+    <!-- Warm editorial typography for the research workspace -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet">
 
     <!-- Minimalist CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/minimalist.css') }}">
     {% block extra_css %}{% endblock %}
+    <script>try { if (localStorage.getItem('udmm-sidebar') === 'collapsed') document.documentElement.classList.add('sb-collapsed'); } catch (e) {}</script>
 </head>
 
-<body>
+{% macro icon(name) -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+{%- if name == 'sidebar' %}<rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M9.5 4.5v15"/>
+{%- elif name == 'plus' %}<path d="M12 7v10M7 12h10"/>
+{%- elif name == 'home' %}<path d="M4.5 10.2 12 4.5l7.5 5.7v8.3a1 1 0 0 1-1 1H15v-5.5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5.5H5.5a1 1 0 0 1-1-1z"/>
+{%- elif name == 'users' %}<circle cx="9" cy="9" r="3.5"/><path d="M3.5 19c.8-3 3-4.8 5.5-4.8s4.7 1.8 5.5 4.8"/><path d="M15.5 5.8a3.5 3.5 0 0 1 0 6.4M17.5 14.6c1.5.6 2.6 2.2 3 4.4"/>
+{%- elif name == 'eye-off' %}<path d="M4 4l16 16"/><path d="M9.8 5.3A9.6 9.6 0 0 1 12 5c5.2 0 8.3 4.8 9 7-.3.9-1 2.3-2.2 3.6M6.5 6.8C4.3 8.2 3.3 10.4 3 12c.7 2.2 3.8 7 9 7 1.8 0 3.3-.6 4.6-1.4"/><path d="M10 10.1a2.8 2.8 0 0 0 3.9 3.9"/>
+{%- elif name == 'chart' %}<path d="M4 4.5v14a1 1 0 0 0 1 1h14.5"/><path d="m7.5 15 3.5-4 3 2.5 5-6"/>
+{%- elif name == 'stack' %}<path d="m12 4 8.5 4.3L12 12.6 3.5 8.3z"/><path d="m3.5 12.2 8.5 4.3 8.5-4.3"/><path d="m3.5 16 8.5 4.3 8.5-4.3"/>
+{%- elif name == 'folder' %}<path d="M3.5 7A1.5 1.5 0 0 1 5 5.5h4.3l2.2 2.2H19a1.5 1.5 0 0 1 1.5 1.5v8.3A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z"/>
+{%- elif name == 'shield' %}<path d="M12 3.5 5 6.2v5.3c0 4.2 3 7.7 7 9 4-1.3 7-4.8 7-9V6.2z"/>
+{%- elif name == 'lock' %}<rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>
+{%- elif name == 'logout' %}<path d="M14.5 4.5H18a1.5 1.5 0 0 1 1.5 1.5v12a1.5 1.5 0 0 1-1.5 1.5h-3.5M10 16l-4-4 4-4M6 12h9.5"/>
+{%- elif name == 'menu' %}<path d="M4 7h16M4 12h16M4 17h16"/>
+{%- endif %}</svg>
+{%- endmacro %}
 
-    <nav>
-        <div class="nav-content container">
-            <a href="/" class="logo-section">
-                <!-- Fallback to text if image is missing, or keep image small and raw -->
-                <span>DAES / UDMM</span>
-            </a>
-
-            <!-- Desktop Nav -->
-            <div class="nav-links">
-                {% if current_user.is_authenticated %}
-                <a href="/">Dashboard</a>
-                <a href="{{ url_for('main.manage_patients') }}">Patients</a>
-                <a href="{{ url_for('main.blinded_data') }}">Blinded Data</a>
-                <a href="{{ url_for('main.analysis') }}">Analysis</a>
-                {% if current_user.role == 'admin' %}
-                <a href="{{ url_for('admin.dashboard') }}">Admin</a>
-                {% endif %}
-                {% else %}
-                <a href="{{ url_for('auth.login') }}">Sign In</a>
-                {% endif %}
+<body class="{% if current_user.is_authenticated %}workspace-page{% else %}public-page{% endif %}">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    {% set crest = url_for('static', filename='img/UDMM.jpeg', v='278e8117') %}
+    {% if current_user.is_authenticated %}
+    <div class="app-shell">
+        <aside class="sidebar" id="mobile-nav" aria-label="Workspace navigation">
+            <div class="sidebar-top">
+                <a href="/" class="brand" aria-label="UDMM Research Workspace home">
+                    <img src="{{ crest }}" class="brand-crest" alt="" width="26" height="40">
+                    <span class="brand-name">UDMM<small>Research Workspace</small></span>
+                </a>
+                <button type="button" class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Collapse sidebar" title="Collapse sidebar">{{ icon('sidebar') }}</button>
             </div>
-
-            {% if current_user.is_authenticated %}
-            <div class="user-info">
-                <span>{{ current_user.username }}</span>
-                <a href="{{ url_for('auth.logout') }}" class="btn-logout">Logout</a>
-            </div>
+            {% if current_user.role == 'supervisor' %}
+            <a href="{{ url_for('main.manage_patients') }}#add-patient" class="new-action" title="New patient"><span class="new-action-icon">{{ icon('plus') }}</span><span class="nav-label">New patient</span></a>
+            {% elif current_user.role == 'pi' %}
+            <a href="{{ url_for('main.estimate_age') }}" class="new-action" title="Next case"><span class="new-action-icon">{{ icon('plus') }}</span><span class="nav-label">Next case</span></a>
             {% endif %}
-        </div>
-    </nav>
-
-    <main class="container">
-        <!-- Flash Messages -->
+            <nav class="nav-links" aria-label="Main navigation">
+                <a href="/" title="Overview" {% if request.path == '/' or request.path == '/dashboard' %}aria-current="page"{% endif %}>{{ icon('home') }}<span class="nav-label">Overview</span></a>
+                {% if current_user.role == 'supervisor' %}
+                <a href="{{ url_for('main.manage_patients') }}" title="Patients" {% if request.path.startswith('/patients') or request.path.startswith('/upload_opg') %}aria-current="page"{% endif %}>{{ icon('users') }}<span class="nav-label">Patients</span></a>
+                <a href="{{ url_for('main.blinded_data') }}" title="Blinded data" {% if request.path.startswith('/blinded_data') %}aria-current="page"{% endif %}>{{ icon('eye-off') }}<span class="nav-label">Blinded data</span></a>
+                <a href="{{ url_for('main.analysis') }}" title="Analysis" {% if request.path.startswith('/analysis') %}aria-current="page"{% endif %}>{{ icon('chart') }}<span class="nav-label">Analysis</span></a>
+                {% endif %}
+                {% if current_user.role == 'pi' %}
+                <a href="{{ url_for('main.estimate_age') }}" title="Estimation queue" {% if request.path.startswith('/estimate_age') or request.path.startswith('/perform_estimation') %}aria-current="page"{% endif %}>{{ icon('stack') }}<span class="nav-label">Estimation queue</span></a>
+                {% endif %}
+                {% if current_user.role == 'admin' %}
+                <a href="{{ url_for('admin.dashboard') }}" title="Admin">{{ icon('shield') }}<span class="nav-label">Admin</span></a>
+                {% endif %}
+            </nav>
+            <div class="sidebar-bottom">
+                <a href="{{ url_for('auth.change_password') }}" class="account-link" title="Change password">{{ icon('lock') }}<span class="nav-label">Change password</span></a>
+                <a href="{{ url_for('auth.logout') }}" class="account-link" title="Sign out">{{ icon('logout') }}<span class="nav-label">Sign out</span></a>
+                <div class="account-card" title="{{ current_user.username }}">
+                    <span class="account-avatar" aria-hidden="true">{{ current_user.username[:1] }}</span>
+                    <span class="account-name">{{ current_user.username|replace('_', ' ')|title }}<small>{{ current_user.role|upper if current_user.role == 'pi' else current_user.role|title }} account</small></span>
+                </div>
+            </div>
+        </aside>
+        <button type="button" class="nav-scrim" aria-label="Close navigation" onclick="toggleNav(false)"></button>
+        <div class="workspace-content">
+            <header class="mobile-header">
+                <a href="/" class="mobile-brand"><img src="{{ crest }}" class="mobile-crest" alt="" width="20" height="31">UDMM Research Workspace</a>
+                <button type="button" class="menu-toggle" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-nav" onclick="toggleNav()">
+                    {{ icon('menu') }}
+                </button>
+            </header>
+            <main class="container" id="main-content">
+    {% else %}
+    {% block public_header %}
+    <header class="public-header"><div class="container public-nav"><a href="/" class="brand"><img src="{{ crest }}" class="brand-crest" alt="" width="30" height="46"><span class="brand-name">UDMM Research Workspace</span></a>{% if request.endpoint not in ('auth.login', 'login_page') %}<a href="{{ url_for('auth.login') }}" class="public-signin">Sign in</a>{% endif %}</div></header>
+    {% endblock %}
+    <main class="{% block main_class %}container{% endblock %}" id="main-content">
+    {% endif %}
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-        <div class="flash-messages">
+        <div class="flash-messages" role="status">
             {% for category, message in messages %}
-            <div class="flash-message {{ category }}">
-                {{ message }}
-            </div>
+            <div class="flash-message {{ category }}">{{ message }}</div>
             {% endfor %}
         </div>
         {% endif %}
         {% endwith %}
 
         {% block content %}{% endblock %}
-    </main>
+            </main>
+            {% block footer %}<footer><div class="container"><span>UDMM Research Workspace · University of Dental Medicine, Mandalay</span><span>Developed by Sitt Min Thar (Data Science and Software Engineering)</span></div></footer>{% endblock %}
+        {% if current_user.is_authenticated %}</div></div>{% endif %}
 
-    <footer>
-        <div class="container">
-            <p>&copy; 2026 University of Dental Medicine, Mandalay</p>
-            <p>Dental Age Estimation System for Research</p>
-            <p style="font-size: 10px; margin-top: 5px; opacity: 0.6;">Developed by Sitt Min Thar (Data Science And
-                Software Engineering)</p>
-        </div>
-    </footer>
-
-    <!-- Custom Confirmation Modal -->
-    <div id="custom-modal" class="modal-overlay" style="display: none;">
+    <!-- Confirmation modal (driven by page scripts) -->
+    <div id="custom-modal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div class="modal-content">
-            <h3>Confirm Action</h3>
+            <h3 id="modal-title">Confirm action</h3>
             <p id="modal-message">Are you sure?</p>
             <div class="modal-actions">
                 <button id="modal-cancel" class="btn">Cancel</button>
-                <button id="modal-confirm" class="btn btn-primary"
-                    style="background: var(--error-color); border-color: var(--error-color); color: white;">Yes,
-                    Delete</button>
+                <button id="modal-confirm" class="btn btn-danger">Delete</button>
             </div>
         </div>
     </div>
 
-    <style>
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
+    <!-- Shared OPG lightbox -->
+    <div id="opg-modal" class="lightbox" onclick="closeOPG()" role="dialog" aria-modal="true" aria-labelledby="opg-modal-title">
+        <div class="lightbox-frame" onclick="event.stopPropagation()">
+            <div class="lightbox-bar">
+                <span id="opg-modal-title" class="lightbox-title"></span>
+                <button type="button" class="lightbox-close" onclick="closeOPG()" aria-label="Close image">&#x2715;</button>
+            </div>
+            <img id="opg-modal-img" src="" alt="OPG radiograph">
+        </div>
+    </div>
 
-        .modal-content {
-            background: white;
-            padding: 24px;
-            border: 2px solid black;
-            box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.2);
-            max-width: 400px;
-            width: 90%;
+    <script>
+        function toggleNav(open) {
+            const isOpen = document.body.classList.toggle('nav-open', open);
+            const btn = document.querySelector('.menu-toggle');
+            if (btn) btn.setAttribute('aria-expanded', isOpen);
         }
-
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 12px;
-            margin-top: 24px;
+        function toggleSidebar() {
+            const collapsed = document.documentElement.classList.toggle('sb-collapsed');
+            const btn = document.querySelector('.sidebar-toggle');
+            const label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+            if (btn) { btn.setAttribute('aria-label', label); btn.title = label; }
+            try { localStorage.setItem('udmm-sidebar', collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
         }
-    </style>
+        if (document.documentElement.classList.contains('sb-collapsed')) {
+            const btn = document.querySelector('.sidebar-toggle');
+            if (btn) { btn.setAttribute('aria-label', 'Expand sidebar'); btn.title = 'Expand sidebar'; }
+        }
+        function showOPG(url, label) {
+            document.getElementById('opg-modal-img').src = url;
+            document.getElementById('opg-modal-title').textContent = label;
+            document.getElementById('opg-modal').classList.add('is-open');
+        }
+        function closeOPG() {
+            document.getElementById('opg-modal').classList.remove('is-open');
+            document.getElementById('opg-modal-img').src = '';
+        }
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape') return;
+            closeOPG();
+            toggleNav(false);
+            const modal = document.getElementById('custom-modal');
+            if (modal) modal.style.display = 'none';
+        });
+    </script>
 
     <script>
         // Global function to handle reliable file downloads

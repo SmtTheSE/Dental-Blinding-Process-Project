@@ -804,3 +804,30 @@ th.check, td.check { width: 44px; padding-right: 0; text-align: center; }
   .lp-actions { flex-direction: column; align-items: flex-start; gap: 18px; }
   .lp-visual { border-radius: 18px; }
 }
+
+/* ---------- Workspace typography: one sans family throughout ----------
+   Signed-in pages use a single UI font (like Claude's app). Headings, the
+   brand, blind codes and numbers all resolve to the sans stack; tabular
+   numerals keep codes and ages aligned without a monospace face. */
+.workspace-page {
+  --font-serif: var(--font-sans);
+  --font-mono: var(--font-sans);
+  font-feature-settings: 'tnum' 1;
+}
+.workspace-page h1, .workspace-page h2, .workspace-page h3 { font-weight: 600; }
+.workspace-page h1 { font-size: clamp(26px, 2.4vw, 32px); line-height: 1.2; letter-spacing: -.025em; }
+.workspace-page h2 { font-size: clamp(19px, 1.6vw, 22px); letter-spacing: -.02em; }
+.workspace-page h3 { font-size: 17px; letter-spacing: -.012em; }
+.workspace-page .page-header p { font-size: 14px; }
+.workspace-page .brand-name { font-size: 17px; font-weight: 600; letter-spacing: -.02em; }
+.workspace-page .mobile-brand { font-size: 16px; font-weight: 600; }
+.workspace-page .dashboard-home h1 { font-size: clamp(28px, 3.2vw, 38px); font-weight: 600; letter-spacing: -.03em; }
+.workspace-page .dashboard-kicker { font-size: 14px; font-weight: 500; }
+.workspace-page .account-avatar { font-size: 13px; font-weight: 600; }
+.workspace-page .empty-state strong { font-size: 16px; font-weight: 600; }
+.workspace-page .modal-content h3 { font-size: 19px; }
+.workspace-page .assessment-panel h2 { font-size: 18px; }
+.workspace-page .age-input-wrap input.age-input { font-weight: 600 !important; font-size: 28px !important; letter-spacing: -.02em; }
+.workspace-page .mono, .workspace-page code { font-size: 1em; letter-spacing: 0; }
+.workspace-page .code-cell { font-size: 13.5px; letter-spacing: .01em; }
+.workspace-page .diff { font-size: 12.5px; }

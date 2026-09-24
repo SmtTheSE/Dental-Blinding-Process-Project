@@ -418,6 +418,9 @@ th.check, td.check { width: 44px; padding-right: 0; text-align: center; }
 .age-value { color: var(--text); font-weight: 600; }
 
 /* ---------- Pagination / empty ---------- */
+[data-swap-region] { scroll-margin-top: 24px; transition: opacity .15s var(--ease); }
+[data-swap-region][aria-busy='true'] { opacity: .5; pointer-events: none; }
+@media (max-width: 760px) { [data-swap-region] { scroll-margin-top: 72px; } }
 .pagination { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 18px; color: var(--muted); font-size: 13px; }
 .pagination .pages { display: flex; gap: 8px; }
 .pagination .btn[aria-disabled='true'] { opacity: .4; pointer-events: none; }

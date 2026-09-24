@@ -4,19 +4,19 @@
 
 {% block content %}
 <div class="page-header">
-    <div><h1>Blinded data</h1><p>{{ entries.total }} coded records available for review.</p></div>
-    <form method="GET" action="/blinded_data" role="search">
+    <div><h1>Blinded data</h1><p id="blinded-summary" data-swap-region>{{ entries.total }} coded records available for review.</p></div>
+    <form method="GET" action="/blinded_data" role="search" id="blinded-data-search-form" data-swap-region>
         <label for="blind-search" class="sr-only">Search blind code</label>
         <input id="blind-search" type="search" name="search" placeholder="Search blind code" value="{{ search_query or '' }}">
         <button type="submit" class="btn">Search</button>
         {% if search_query %}
-        <a href="/blinded_data" class="btn">Clear</a>
+        <a href="/blinded_data" class="btn" data-swap-link>Clear</a>
         {% endif %}
     </form>
 </div>
 
 <!-- Data Table -->
-<div>
+<div id="blinded-list" data-swap-region>
     {% if entries.items %}
     <div id="blinded-table-container">
         <table>

@@ -10,18 +10,18 @@
     </div>
 
     <!-- Search Inline -->
-    <form method="GET" action="/estimate_age" role="search">
+    <form method="GET" action="/estimate_age" role="search" id="estimate-age-search-form" data-swap-region>
         <label for="estimate-search" class="sr-only">Search blind code</label>
         <input id="estimate-search" type="search" name="search" placeholder="Search blind code" value="{{ search_query or '' }}">
         <button type="submit" class="btn">Search</button>
         {% if search_query %}
-        <a href="/estimate_age" class="btn">Clear</a>
+        <a href="/estimate_age" class="btn" data-swap-link>Clear</a>
         {% endif %}
     </form>
 </div>
 
 <!-- List Section -->
-<div id="entries-container">
+<div id="entries-container" data-swap-region>
     {% include 'estimate_age_content.html' %}
 </div>
 {% endblock %}

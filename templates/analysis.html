@@ -10,12 +10,12 @@
     </div>
 
     <!-- Search Inline -->
-    <form method="GET" action="/analysis" role="search">
+    <form method="GET" action="/analysis" role="search" id="analysis-search-form" data-swap-region>
         <label for="analysis-search" class="sr-only">Search patient</label>
         <input id="analysis-search" type="search" name="search" placeholder="Search patient" value="{{ search_query or '' }}">
         <button type="submit" class="btn">Search</button>
         {% if search_query %}
-        <a href="/analysis" class="btn">Clear</a>
+        <a href="/analysis" class="btn" data-swap-link>Clear</a>
         {% endif %}
     </form>
 </div>
@@ -40,7 +40,7 @@
 {% endif %}
 
 <!-- Data Table -->
-<div>
+<div id="analysis-list" data-swap-region>
     <div class="section-heading"><div><h2>Detailed records</h2><p>{{ patients.total }} records. Differences are estimate minus actual age, in years.</p></div><a href="{{ url_for('main.export_patients') }}" class="btn" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Export Excel</a></div>
     {% if results %}
     <div id="analysis-table-container">

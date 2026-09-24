@@ -10,12 +10,12 @@
     </div>
 
     <!-- Search -->
-    <form method="GET" action="/patients" role="search">
+    <form method="GET" action="/patients" role="search" id="patients-search-form" data-swap-region>
         <label for="patient-search" class="sr-only">Search by ID or name</label>
         <input id="patient-search" type="search" name="search" placeholder="Search ID or name" value="{{ search_query or '' }}">
         <button type="submit" class="btn">Search</button>
         {% if search_query %}
-        <a href="/patients" class="btn">Clear</a>
+        <a href="/patients" class="btn" data-swap-link>Clear</a>
         {% endif %}
     </form>
 </div>
@@ -81,7 +81,7 @@
 </div>
 
 <!-- Patients List -->
-<div>
+<div id="patients-list" data-swap-region data-total="{{ patients.total }}">
     <div class="section-heading"><h2>Patient records</h2><p>{{ patients.total }} total records. Select rows to manage them together.</p></div>
 
     <div id="select-all-banner" class="select-banner">
@@ -217,7 +217,16 @@
 
     let lastChecked = null;
     let selectAllAcrossPages = false;
-    const totalPatientsInDB = {{ patients.total }};
+    let totalPatientsInDB = {{ patients.total }};
+
+    // Pagination/search swap the table in place; reset selection state for the new rows.
+    document.addEventListener('swapnav:updated', function () {
+        const list = document.getElementById('patients-list');
+        totalPatientsInDB = list ? Number(list.dataset.total) || 0 : 0;
+        lastChecked = null;
+        selectAllAcrossPages = false;
+        updateBulkDeleteButton();
+    });
 
     function handleCheckboxClick(e, checkbox) {
         if (!lastChecked) {

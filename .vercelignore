@@ -17,3 +17,11 @@ auth.log
 *.egg-info/
 dist/
 build/
+
+# Not needed at runtime: keeps the serverless bundle small
+docs/
+scripts/
+supabase/
+tmp/
+.archive/
+.claude/

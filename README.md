@@ -63,6 +63,24 @@ This is a web application designed for dental age estimation in children (5-12 y
 - Calculates total dental maturity score
 - Converts score to age using conversion tables (different for males and females)
 
+## Project structure
+
+```
+.
+├── app.py, routes.py, auth.py      # Flask app factory, routes and auth (Vercel entry: app.py)
+├── models.py, config.py            # SQLAlchemy models and configuration
+├── dental_methods.py               # Demirjian / AlQahtani calculations
+├── setup_db.py                     # Database initialisation (also used by app.py)
+├── index.py, run.py                # Serverless handler and local dev server
+├── utils/                          # Supabase storage helpers
+├── templates/                      # Jinja templates
+├── static/                         # CSS, JS, images and favicons
+├── scripts/                        # Developer utilities (see scripts/README.md)
+├── supabase/policies/              # Storage policy SQL
+├── docs/                           # Deployment, migration and troubleshooting guides
+└── tmp/                            # Script output (git-ignored)
+```
+
 ## Installation
 
 1. Install required packages:

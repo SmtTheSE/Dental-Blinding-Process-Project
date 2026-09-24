@@ -138,3 +138,20 @@ uploads/
 
 # Vercel
 .vercel
+# macOS
+.DS_Store
+
+# Local tooling
+.claude/
+
+# Script output and local archives (see scripts/README.md)
+tmp/*
+!tmp/.gitkeep
+.archive/
+
+# Ad-hoc exports and debug captures at the repo root
+/*.xlsx
+/*.xls
+/*.csv
+/cookies.txt
+/headers.txt

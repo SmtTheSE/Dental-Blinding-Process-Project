@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="page-header">
-    <div><h1>Blinded data</h1><p id="blinded-summary" data-swap-region>{{ entries.total }} coded records available for review.</p></div>
+    <div><h1>Blinded data</h1><p id="blinded-summary" data-swap-region>{{ entries.total }} coded patients, each listed once per method.</p></div>
     <form method="GET" action="/blinded_data" role="search" id="blinded-data-search-form" data-swap-region>
         <label for="blind-search" class="sr-only">Search blind code</label>
         <input id="blind-search" type="search" name="search" placeholder="Search blind code" value="{{ search_query or '' }}">

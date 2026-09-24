@@ -140,36 +140,30 @@ def dashboard():
                              estimation_count=estimation_count)
 
 def renumber_patient_ids():
-    """Renumber patient IDs sequentially starting from 1"""
-    patients = Patient.query.order_by(Patient.id).all()
-    
-    # First, assign temporary IDs to avoid unique constraint violations
-    for i, patient in enumerate(patients, 1):
-        # Assign a temporary ID that won't conflict
-        patient.patient_id = f"TEMP_{patient.id}"
-    db.session.flush()  # Flush to database but don't commit yet
-    
-    # Then assign the final sequential IDs
-    for i, patient in enumerate(patients, 1):
-        # Check if patient_id is in format "T<number>" or just a number
-        if patient.patient_id.startswith('T') and not patient.patient_id.startswith('TEMP_'):
-            # Update T-prefixed IDs to be sequential
-            patient.patient_id = f"T{i}"
-        elif patient.patient_id.startswith('TEMP_'):
-            # This is a patient that had a numeric ID before
-            # Update numeric IDs to be sequential
-            patient.patient_id = str(i)
-        else:
-            # Check if it's a pure number
-            try:
-                # Try to convert to int to check if it's a pure number
-                int(patient.patient_id)
-                patient.patient_id = str(i)
-            except ValueError:
-                # If it's not a pure number, keep as is but log
-                pass
-    
+    """Renumber patient IDs sequentially ("1", "2", ...) in creation (id) order.
+
+    Same result as the previous row-by-row version (which renamed every patient
+    to TEMP_<id> first, so every ID ended up as its position number), but done
+    in two SQL statements instead of two UPDATEs per patient. Only rows whose
+    number actually changes are touched; the TEMP_ step avoids unique-constraint
+    clashes while numbers shift.
+    """
+    table = db.engine.dialect.identifier_preparer.quote(Patient.__table__.name)
+    ranked = (
+        f"(SELECT id AS rid, CAST(ROW_NUMBER() OVER (ORDER BY id) AS VARCHAR(50)) AS new_pid "
+        f"FROM {table}) AS ranked"
+    )
+    temp_id = f"'TEMP_' || CAST({table}.id AS VARCHAR(50))"
+    db.session.execute(db.text(
+        f"UPDATE {table} SET patient_id = {temp_id} FROM {ranked} "
+        f"WHERE {table}.id = ranked.rid AND {table}.patient_id <> ranked.new_pid"
+    ))
+    db.session.execute(db.text(
+        f"UPDATE {table} SET patient_id = ranked.new_pid FROM {ranked} "
+        f"WHERE {table}.id = ranked.rid AND {table}.patient_id = {temp_id}"
+    ))
     db.session.commit()
+    db.session.expire_all()
 
 @main.route('/generate_upload_url', methods=['GET'])
 @role_required('supervisor')
@@ -235,6 +229,9 @@ def manage_patients():
                     
                     added_count = 0
                     skipped_count = 0
+                    # Existing IDs loaded once (not one query per row); IDs added
+                    # below join the set so duplicates within the file are skipped too.
+                    existing_ids = {pid for (pid,) in db.session.query(Patient.patient_id)}
                     
                     for row in csv_input:
                         # Handle different CSV formats:
@@ -267,8 +264,8 @@ def manage_patients():
                                 code_b = row[6]
                             
                             # Check if patient already exists
-                            patient = Patient.query.filter_by(patient_id=patient_id).first()
-                            if not patient:
+                            if patient_id not in existing_ids:
+                                existing_ids.add(patient_id)
                                 patient = Patient(
                                     patient_id=patient_id,
                                     name=name,
@@ -347,6 +344,9 @@ def manage_patients():
                         added_count = 0
                         skipped_count = 0
                         opg_fail_count = 0
+                        # Existing IDs loaded once (not one query per row); IDs added
+                        # below join the set so duplicates within the file are skipped too.
+                        existing_ids = {pid for (pid,) in db.session.query(Patient.patient_id)}
 
                         for formula_row in worksheet.iter_rows(values_only=True):
                             row_count += 1
@@ -380,10 +380,10 @@ def manage_patients():
                             if not patient_id or patient_id.lower() in ('none', 'nan'):
                                 continue
 
-                            existing = Patient.query.filter_by(patient_id=patient_id).first()
-                            if existing:
+                            if patient_id in existing_ids:
                                 skipped_count += 1
                                 continue
+                            existing_ids.add(patient_id)
 
                             # --- OPG upload priority ---
                             uploaded_opg_url = None
@@ -711,14 +711,22 @@ def bulk_delete_patients():
                 except:
                     pass
             
-            # Delete associated estimation entries
-            if patient.code_a:
-                EstimationEntry.query.filter_by(code=patient.code_a).delete()
-            if patient.code_b:
-                EstimationEntry.query.filter_by(code=patient.code_b).delete()
-                
-            db.session.delete(patient)
             deleted_count += 1
+        
+        # Delete estimation entries and patients in batches rather than
+        # issuing separate DELETE statements for every patient.
+        codes = [c for p in target_patients for c in (p.code_a, p.code_b) if c]
+        ids = [p.id for p in target_patients]
+        batch = 500
+        for i in range(0, len(codes), batch):
+            EstimationEntry.query.filter(
+                EstimationEntry.code.in_(codes[i:i + batch])
+            ).delete(synchronize_session=False)
+        for i in range(0, len(ids), batch):
+            Patient.query.filter(
+                Patient.id.in_(ids[i:i + batch])
+            ).delete(synchronize_session=False)
+        db.session.expire_all()
         
         if deleted_count > 0:
             db.session.commit()
@@ -894,12 +902,21 @@ def blinded_data():
             )
         )
     
-    # Get patients with pagination
-    patients = patients_query.paginate(
+    # Get patients with pagination (stable order so rows never repeat between pages)
+    patients = patients_query.order_by(Patient.id).paginate(
         page=page,
         per_page=per_page,
         error_out=False
     )
+    
+    # Which codes on this page already have an estimate (one query per page)
+    page_codes = [c for p in patients.items for c in (p.code_a, p.code_b) if c]
+    estimated_codes = set()
+    if page_codes:
+        estimated_codes = {
+            code for (code,) in db.session.query(EstimationEntry.code)
+            .filter(EstimationEntry.code.in_(page_codes))
+        }
     
     blinded_entries = []
     for patient in patients.items:
@@ -909,7 +926,8 @@ def blinded_data():
                 'code': patient.code_a,
                 'opg_link': patient.opg_link,
                 'sex': patient.sex,
-                'method': 'AlQahtani'
+                'method': 'AlQahtani',
+                'is_estimated': patient.code_a in estimated_codes
             }
             blinded_entries.append(entry_a)
         
@@ -919,7 +937,8 @@ def blinded_data():
                 'code': patient.code_b,
                 'opg_link': patient.opg_link,
                 'sex': patient.sex,
-                'method': 'Demirjian'
+                'method': 'Demirjian',
+                'is_estimated': patient.code_b in estimated_codes
             }
             blinded_entries.append(entry_b)
     
@@ -928,8 +947,9 @@ def blinded_data():
     
     # Create a dummy pagination object since the template expects one
     class DummyPagination:
-        def __init__(self, items, page, pages, has_prev, has_next, prev_num, next_num):
+        def __init__(self, items, page, pages, has_prev, has_next, prev_num, next_num, total):
             self.items = items
+            self.total = total
             self.page = page
             self.pages = pages
             self.has_prev = has_prev
@@ -944,7 +964,8 @@ def blinded_data():
         has_prev=patients.has_prev,
         has_next=patients.has_next,
         prev_num=patients.prev_num,
-        next_num=patients.next_num
+        next_num=patients.next_num,
+        total=patients.total
     )
     
     # Check if it's an AJAX request
@@ -1020,16 +1041,21 @@ def estimate_age():
             )
         )
     
-    # Apply pagination
-    patients = patients_query.paginate(
+    # Apply pagination (stable order so cases never repeat or go missing between pages)
+    patients = patients_query.order_by(Patient.id).paginate(
         page=page,
         per_page=per_page,
         error_out=False
     )
     
-    # Find which codes have already been estimated
-    existing_estimations = EstimationEntry.query.with_entities(EstimationEntry.code).all()
-    estimated_codes = [e.code for e in existing_estimations]
+    # Find which codes on this page have already been estimated
+    page_codes = [c for p in patients.items for c in (p.code_a, p.code_b) if c]
+    estimated_codes = set()
+    if page_codes:
+        estimated_codes = {
+            code for (code,) in db.session.query(EstimationEntry.code)
+            .filter(EstimationEntry.code.in_(page_codes))
+        }
     
     # Prepare blinded entries that haven't been estimated yet
     blinded_entries = []
@@ -1057,11 +1083,18 @@ def estimate_age():
     # Shuffle the data
     random.shuffle(blinded_entries)
     
-    # Get completed assessments for the PI to see results (all completed)
-    completed_patients = Patient.query.filter(
+    # Completed assessments, paginated separately (?completed_page=N) so the
+    # page stays fast as results accumulate; every result remains reachable.
+    completed_page = request.args.get('completed_page', 1, type=int)
+    completed = Patient.query.filter(
         Patient.alqahtani_estimated_age.isnot(None),
         Patient.demirjian_estimated_age.isnot(None)
-    ).order_by(Patient.created_at.desc()).all()
+    ).order_by(Patient.created_at.desc(), Patient.id.desc()).paginate(
+        page=completed_page,
+        per_page=per_page,
+        error_out=False
+    )
+    completed_patients = completed.items
 
     # Pre-calculate differences for completed patients
     for p in completed_patients:
@@ -1073,25 +1106,18 @@ def estimate_age():
     # Remove the artificial limit that was causing issues
     # The pagination will handle the appropriate number of entries to display
     
-    # Calculate totals for counts
-    total_pending_patients = Patient.query.filter(
-        Patient.code_a.isnot(None), 
-        Patient.code_b.isnot(None),
-        db.or_(
-            Patient.alqahtani_estimated_age.is_(None),
-            Patient.demirjian_estimated_age.is_(None)
-        )
-    ).all()
-    
-    total_queue_count = 0
-    for p in total_pending_patients:
-        if p.alqahtani_estimated_age is None: total_queue_count += 1
-        if p.demirjian_estimated_age is None: total_queue_count += 1
+    # Pending assessments = missing AlQahtani + missing Demirjian estimates,
+    # counted in SQL instead of loading every pending patient.
+    pending_alq, pending_dem = db.session.query(
+        db.func.count(Patient.id).filter(Patient.alqahtani_estimated_age.is_(None)),
+        db.func.count(Patient.id).filter(Patient.demirjian_estimated_age.is_(None))
+    ).filter(
+        Patient.code_a.isnot(None),
+        Patient.code_b.isnot(None)
+    ).one()
+    total_queue_count = pending_alq + pending_dem
 
-    total_completed_count = Patient.query.filter(
-        Patient.alqahtani_estimated_age.isnot(None), 
-        Patient.demirjian_estimated_age.isnot(None)
-    ).count()
+    total_completed_count = completed.total
     
     # Check if it's an AJAX request
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -1099,6 +1125,7 @@ def estimate_age():
         return render_template('estimate_age_content.html', 
                              entries=blinded_entries, 
                              completed_patients=completed_patients,
+                             completed=completed,
                              search_query=search_query, 
                              patients=patients,
                              total_queue_count=total_queue_count,
@@ -1107,6 +1134,7 @@ def estimate_age():
     return render_template('estimate_age.html', 
                          entries=blinded_entries, 
                          completed_patients=completed_patients,
+                         completed=completed,
                          search_query=search_query, 
                          patients=patients,
                          total_queue_count=total_queue_count,

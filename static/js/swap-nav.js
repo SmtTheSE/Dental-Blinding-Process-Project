@@ -99,8 +99,10 @@
     var url = new URL(link.href, window.location.href);
     if (url.origin !== window.location.origin) return;
     e.preventDefault();
-    var region = link.closest(REGION);
-    navigate(url.href, { anchorId: region && region.id });
+    // Anchor to the nearest identified section around the link (e.g. the
+    // completed-assessments block inside the queue), not just the region.
+    var anchor = link.closest('[id]');
+    navigate(url.href, { anchorId: anchor && anchor.id });
   });
 
   // GET search forms (role="search").

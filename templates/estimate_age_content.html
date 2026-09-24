@@ -41,8 +41,8 @@
     <nav class="pagination" aria-label="Pagination">
         <span>Page {{ patients.page }} of {{ patients.pages }}</span>
         <div class="pages">
-            <a class="btn btn-sm" {% if patients.has_prev %}href="{{ url_for('main.estimate_age', page=patients.prev_num, search=search_query) }}"{% else %}aria-disabled="true"{% endif %}>Previous</a>
-            <a class="btn btn-sm" {% if patients.has_next %}href="{{ url_for('main.estimate_age', page=patients.next_num, search=search_query) }}"{% else %}aria-disabled="true"{% endif %}>Next</a>
+            <a class="btn btn-sm" {% if patients.has_prev %}href="{{ url_for('main.estimate_age', page=patients.prev_num, search=search_query, completed_page=completed.page if completed is defined else None) }}"{% else %}aria-disabled="true"{% endif %}>Previous</a>
+            <a class="btn btn-sm" {% if patients.has_next %}href="{{ url_for('main.estimate_age', page=patients.next_num, search=search_query, completed_page=completed.page if completed is defined else None) }}"{% else %}aria-disabled="true"{% endif %}>Next</a>
         </div>
     </nav>
     {% endif %}
@@ -94,5 +94,15 @@
             </tbody>
         </table>
     </div>
+
+    {% if completed is defined and completed.pages > 1 %}
+    <nav class="pagination" aria-label="Completed assessments pagination">
+        <span>Page {{ completed.page }} of {{ completed.pages }}</span>
+        <div class="pages">
+            <a class="btn btn-sm" {% if completed.has_prev %}href="{{ url_for('main.estimate_age', completed_page=completed.prev_num, page=patients.page, search=search_query) }}#completed-assessments-section"{% else %}aria-disabled="true"{% endif %}>Previous</a>
+            <a class="btn btn-sm" {% if completed.has_next %}href="{{ url_for('main.estimate_age', completed_page=completed.next_num, page=patients.page, search=search_query) }}#completed-assessments-section"{% else %}aria-disabled="true"{% endif %}>Next</a>
+        </div>
+    </nav>
+    {% endif %}
 </section>
 {% endif %}

@@ -603,6 +603,9 @@ th.check, td.check { width: 44px; padding-right: 0; text-align: center; }
 .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 18px; margin-bottom: 56px; }
 .chart-grid .card { margin: 0; }
 .chart-grid img { display: block; width: 100%; height: auto; border-radius: var(--radius-sm); background: #fff; }
+.chart-img { aspect-ratio: 5 / 3; object-fit: contain; background: linear-gradient(90deg, var(--bg-sunken), var(--surface-hover), var(--bg-sunken)) 0 0 / 200% 100%; animation: shimmer 1.4s linear infinite; }
+.chart-img:is([data-loaded]) { animation: none; background: #fff; }
+@keyframes shimmer { to { background-position: -200% 0; } }
 
 /* ---------- Motion ---------- */
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }

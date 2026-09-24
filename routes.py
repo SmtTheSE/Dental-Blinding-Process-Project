@@ -1133,171 +1133,119 @@ def perform_estimation():
                           sex=sex, 
                           teeth=teeth)
 
-def generate_chart_data():
-    """Generate chart data with caching"""
-    cache_key = "analysis_charts"
-    
-    # Check if we have cached data
-    if cache_key in chart_cache:
-        cached_data, timestamp = chart_cache[cache_key]
-        # Cache for 5 minutes
-        if (datetime.datetime.utcnow() - timestamp).total_seconds() < 300:
+CHART_CACHE_SECONDS = 300
+CHART_COLORS = {'AlQahtani': '#2563eb', 'Demirjian': '#818cf8'}
+
+
+def _analysis_data_version():
+    """Cheap fingerprint of the data the charts depend on.
+
+    Changes whenever estimates or patients are added or removed, so cached
+    charts (server- and browser-side) are replaced as soon as data changes.
+    """
+    est_count, est_max = db.session.query(
+        db.func.count(EstimationEntry.id), db.func.max(EstimationEntry.id)
+    ).one()
+    pat_count, pat_max = db.session.query(
+        db.func.count(Patient.id), db.func.max(Patient.id)
+    ).one()
+    return f"{est_count}-{est_max or 0}-{pat_count}-{pat_max or 0}"
+
+
+def _render_png(fig):
+    buf = BytesIO()
+    fig.savefig(buf, format='png', bbox_inches='tight')
+    plt.close(fig)  # free the figure; otherwise memory grows on warm instances
+    return buf.getvalue()
+
+
+def generate_chart_data(version=None):
+    """Build the analysis charts as PNG bytes, cached per data version.
+
+    Returns {'accuracy': bytes, 'comparison': bytes}, or None when there are no
+    estimates yet. Uses two column-only queries and joins in memory, instead of
+    one patient query per estimate.
+    """
+    version = version or _analysis_data_version()
+    cached = chart_cache.get("analysis_charts")
+    if cached:
+        cached_version, charts, timestamp = cached
+        age = (datetime.datetime.utcnow() - timestamp).total_seconds()
+        if cached_version == version and age < CHART_CACHE_SECONDS:
             logger.info("Returning cached chart data")
-            return cached_data
-    
-    # Generate new chart data
+            return charts
+
     logger.info("Generating new chart data")
-    
-    # Get all estimation entries
-    entries = EstimationEntry.query.all()
-    
-    if not entries:
-        return None, None, None, None
-    
-    # Prepare data for charts
-    alq_ages = [e.estimated_age for e in entries if e.method_used.lower() == 'alqahtani']
-    dem_ages = [e.estimated_age for e in entries if e.method_used.lower() == 'demirjian']
-    
-    # Actual ages from patients
-    # Actual ages from patients
-    actual_ages = []
-    
-    # Optimization: Fetch all patients at once to avoid N+1 query problem
-    # This replaces hundreds/thousands of DB queries with a single one
-    all_patients = Patient.query.filter(
-        db.or_(Patient.code_a.isnot(None), Patient.code_b.isnot(None))
+    entries = db.session.query(
+        EstimationEntry.code, EstimationEntry.estimated_age, EstimationEntry.method_used
     ).all()
-    
-    # Create a map of code -> actual_age for O(1) lookup
+    if not entries:
+        return None
+
     code_to_age = {}
-    for p in all_patients:
-        if p.code_a:
-            code_to_age[p.code_a] = p.actual_age
-        if p.code_b:
-            code_to_age[p.code_b] = p.actual_age
-            
-    for e in entries:
-        if e.code in code_to_age:
-            actual_ages.append(code_to_age[e.code])
-    
-    # Generate charts
-    # 1. Age Distribution Chart
-    plt.clf()
+    for code_a, code_b, actual_age in db.session.query(
+        Patient.code_a, Patient.code_b, Patient.actual_age
+    ).filter(db.or_(Patient.code_a.isnot(None), Patient.code_b.isnot(None))):
+        if code_a:
+            code_to_age[code_a] = actual_age
+        if code_b:
+            code_to_age[code_b] = actual_age
+
+    estimates = {'AlQahtani': [], 'Demirjian': []}
+    errors = {'AlQahtani': [], 'Demirjian': []}
+    for code, estimated_age, method_used in entries:
+        method = {'alqahtani': 'AlQahtani', 'demirjian': 'Demirjian'}.get((method_used or '').lower())
+        if not method:
+            continue
+        estimates[method].append(estimated_age)
+        actual_age = code_to_age.get(code)
+        if actual_age is not None:
+            errors[method].append(abs(estimated_age - actual_age))
+
+    # 1. Distribution of estimated ages (shown as "Accuracy distribution")
     fig, ax = plt.subplots(figsize=(10, 6))
-    
-    if alq_ages or dem_ages:
-        if alq_ages:
-            ax.hist(alq_ages, bins=20, alpha=0.7, label='AlQahtani', color='#2563eb')
-        if dem_ages:
-            ax.hist(dem_ages, bins=20, alpha=0.7, label='Demirjian', color='#818cf8')
+    if estimates['AlQahtani'] or estimates['Demirjian']:
+        for method, ages in estimates.items():
+            if ages:
+                ax.hist(ages, bins=20, alpha=0.7, label=method, color=CHART_COLORS[method])
         ax.set_xlabel('Estimated Age (years)')
         ax.set_ylabel('Frequency')
         ax.set_title('Distribution of Estimated Ages')
         ax.legend()
-    
-    buf = BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight')
-    buf.seek(0)
-    age_dist_chart = base64.b64encode(buf.getvalue()).decode('utf-8')
-    buf.close()
-    
-    # 2. Actual vs Estimated Chart
-    plt.clf()
+    accuracy_chart = _render_png(fig)
+
+    # 2. Mean absolute error per method
     fig, ax = plt.subplots(figsize=(10, 6))
-    
-    if actual_ages and (alq_ages or dem_ages):
-        if alq_ages and len(actual_ages) == len(alq_ages):
-            ax.scatter(actual_ages[:len(alq_ages)], alq_ages, alpha=0.7, label='AlQahtani', color='#2563eb')
-        if dem_ages and len(actual_ages) == len(dem_ages):
-            ax.scatter(actual_ages[:len(dem_ages)], dem_ages, alpha=0.7, label='Demirjian', color='#818cf8')
-        
-        # Perfect prediction line
-        if actual_ages:
-            min_age = min(actual_ages)
-            max_age = max(actual_ages)
-            ax.plot([min_age, max_age], [min_age, max_age], 'r--', label='Perfect Prediction')
-        
-        ax.set_xlabel('Actual Age (years)')
-        ax.set_ylabel('Estimated Age (years)')
-        ax.set_title('Actual vs Estimated Ages')
-        ax.legend()
-    
-    buf = BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight')
-    buf.seek(0)
-    actual_vs_estimated_chart = base64.b64encode(buf.getvalue()).decode('utf-8')
-    buf.close()
-    
-    # 3. Error Distribution Chart
-    plt.clf()
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    alq_errors = []
-    dem_errors = []
-    
-    for i, e in enumerate(entries):
-        patient = Patient.query.filter(
-            (Patient.code_a == e.code) | (Patient.code_b == e.code)
-        ).first()
-        if patient:
-            error = abs(e.estimated_age - patient.actual_age)
-            if e.method_used.lower() == 'alqahtani':
-                alq_errors.append(error)
-            elif e.method_used.lower() == 'demirjian':
-                dem_errors.append(error)
-    
-    if alq_errors or dem_errors:
-        if alq_errors:
-            ax.hist(alq_errors, bins=20, alpha=0.7, label='AlQahtani', color='#2563eb')
-        if dem_errors:
-            ax.hist(dem_errors, bins=20, alpha=0.7, label='Demirjian', color='#818cf8')
-        ax.set_xlabel('Absolute Error (years)')
-        ax.set_ylabel('Frequency')
-        ax.set_title('Distribution of Estimation Errors')
-        ax.legend()
-    
-    buf = BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight')
-    buf.seek(0)
-    error_dist_chart = base64.b64encode(buf.getvalue()).decode('utf-8')
-    buf.close()
-    
-    # 4. Method Comparison Chart
-    plt.clf()
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    alq_mean_error = np.mean(alq_errors) if alq_errors else 0
-    dem_mean_error = np.mean(dem_errors) if dem_errors else 0
-    
     methods = ['AlQahtani', 'Demirjian']
-    mean_errors = [alq_mean_error, dem_mean_error]
-    colors = ['#2563eb', '#818cf8']
-    
-    bars = ax.bar(methods, mean_errors, color=colors)
+    mean_errors = [float(np.mean(errors[m])) if errors[m] else 0 for m in methods]
+    bars = ax.bar(methods, mean_errors, color=[CHART_COLORS[m] for m in methods])
     ax.set_ylabel('Mean Absolute Error (years)')
     ax.set_title('Comparison of Methods')
-    
-    # Add value labels on bars
     for bar, error in zip(bars, mean_errors):
-        height = bar.get_height()
         ax.annotate(f'{error:.2f}',
-                    xy=(bar.get_x() + bar.get_width() / 2, height),
-                    xytext=(0, 3),
-                    textcoords="offset points",
-                    ha='center', va='bottom')
-    
-    buf = BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight')
-    buf.seek(0)
-    method_comparison_chart = base64.b64encode(buf.getvalue()).decode('utf-8')
-    buf.close()
-    
-    chart_data = (age_dist_chart, actual_vs_estimated_chart, error_dist_chart, method_comparison_chart)
-    
-    # Cache the data
-    chart_cache[cache_key] = (chart_data, datetime.datetime.utcnow())
-    
-    return chart_data
+                    xy=(bar.get_x() + bar.get_width() / 2, bar.get_height()),
+                    xytext=(0, 3), textcoords="offset points", ha='center', va='bottom')
+    comparison_chart = _render_png(fig)
+
+    charts = {'accuracy': accuracy_chart, 'comparison': comparison_chart}
+    chart_cache["analysis_charts"] = (version, charts, datetime.datetime.utcnow())
+    return charts
+
+
+@main.route('/analysis/chart/<kind>.png')
+@role_required('supervisor')
+def analysis_chart(kind):
+    """Serve one analysis chart as an image, so the page itself loads instantly."""
+    if kind not in ('accuracy', 'comparison'):
+        abort(404)
+    charts = generate_chart_data()
+    if not charts:
+        abort(404)
+    response = Response(charts[kind], mimetype='image/png')
+    # The URL carries the data version (?v=...), so a short private cache is safe.
+    response.headers['Cache-Control'] = f'private, max-age={CHART_CACHE_SECONDS}'
+    return response
+
 
 @main.route('/analysis')
 @role_required('supervisor')
@@ -1348,50 +1296,23 @@ def analysis():
         else:
             p.dem_diff = None
     
-    # Generate or retrieve cached chart data
-    chart_data = generate_chart_data()
-    
-    if chart_data[0] is None:
+    # Charts are served separately by analysis_chart(); here we only need to
+    # know whether there is anything to chart, and a version for cache-busting.
+    has_estimates = db.session.query(EstimationEntry.id).limit(1).first() is not None
+    chart_version = _analysis_data_version() if has_estimates else None
+    if not has_estimates:
         flash('No data available for analysis yet.')
-        # Check if it's an AJAX request
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            # Return only the content part for AJAX requests
-            return render_template('analysis_content.html',
-                                 accuracy_chart=None,
-                                 comparison_chart=None,
-                                 patients=patients,
-                                 results=results,
-                                 search_query=search_query)
-        
-        return render_template('analysis.html', 
-                             accuracy_chart=None,
-                             comparison_chart=None,
-                             patients=patients,
-                             results=results,
-                             search_query=search_query)
-    
-    age_dist_chart, actual_vs_estimated_chart, error_dist_chart, method_comparison_chart = chart_data
-    
-    # Map the generated charts to the expected template variables
-    accuracy_chart = age_dist_chart  # Using age distribution as the accuracy chart
-    comparison_chart = method_comparison_chart  # Using method comparison as the comparison chart
-    
-    # Check if it's an AJAX request
+
+    template = 'analysis.html'
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         # Return only the content part for AJAX requests
-        return render_template('analysis_content.html',
-                             accuracy_chart=accuracy_chart,
-                             comparison_chart=comparison_chart,
-                             patients=patients,
-                             results=results,
-                             search_query=search_query)
-    
-    return render_template('analysis.html',
-                         accuracy_chart=accuracy_chart,
-                         comparison_chart=comparison_chart,
-                         patients=patients,
-                         results=results,
-                         search_query=search_query)
+        template = 'analysis_content.html'
+
+    return render_template(template,
+                           chart_version=chart_version,
+                           patients=patients,
+                           results=results,
+                           search_query=search_query)
 
 @main.route('/clear_chart_cache')
 @role_required('supervisor')

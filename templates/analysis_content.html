@@ -1,22 +1,14 @@
 <!-- Charts Section -->
-{% if accuracy_chart or comparison_chart %}
-<div class="chart-grid"
-    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 40px; margin-bottom: 60px;">
-    {% if accuracy_chart %}
+{% if chart_version %}
+<div class="chart-grid">
     <div class="card">
-        <h3>Accuracy Distribution</h3>
-        <img src="data:image/png;base64,{{ accuracy_chart }}" alt="Accuracy Chart"
-            style="width: 100%; height: auto;">
+        <h3>Accuracy distribution</h3>
+        <img class="chart-img" src="{{ url_for('main.analysis_chart', kind='accuracy', v=chart_version) }}" alt="Accuracy distribution chart" width="1000" height="600" decoding="async" onload="this.dataset.loaded = ''">
     </div>
-    {% endif %}
-
-    {% if comparison_chart %}
     <div class="card">
-        <h3>Method Comparison</h3>
-        <img src="data:image/png;base64,{{ comparison_chart }}" alt="Comparison Chart"
-            style="width: 100%; height: auto;">
+        <h3>Method comparison</h3>
+        <img class="chart-img" src="{{ url_for('main.analysis_chart', kind='comparison', v=chart_version) }}" alt="Method comparison chart" width="1000" height="600" decoding="async" onload="this.dataset.loaded = ''">
     </div>
-    {% endif %}
 </div>
 {% endif %}
 

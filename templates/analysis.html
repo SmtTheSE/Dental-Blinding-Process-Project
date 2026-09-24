@@ -21,21 +21,16 @@
 </div>
 
 <!-- Charts Section -->
-{% if accuracy_chart or comparison_chart %}
+{% if chart_version %}
 <div class="chart-grid">
-    {% if accuracy_chart %}
     <div class="card">
         <h3>Accuracy distribution</h3>
-        <img src="data:image/png;base64,{{ accuracy_chart }}" alt="Accuracy distribution chart">
+        <img class="chart-img" src="{{ url_for('main.analysis_chart', kind='accuracy', v=chart_version) }}" alt="Accuracy distribution chart" width="1000" height="600" decoding="async" onload="this.dataset.loaded = ''">
     </div>
-    {% endif %}
-
-    {% if comparison_chart %}
     <div class="card">
         <h3>Method comparison</h3>
-        <img src="data:image/png;base64,{{ comparison_chart }}" alt="Method comparison chart">
+        <img class="chart-img" src="{{ url_for('main.analysis_chart', kind='comparison', v=chart_version) }}" alt="Method comparison chart" width="1000" height="600" decoding="async" onload="this.dataset.loaded = ''">
     </div>
-    {% endif %}
 </div>
 {% endif %}
 
